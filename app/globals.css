@@ -8,15 +8,14 @@
   display: inline-block;
 }
 #reel {
-  width: 100vw;
+  width: 100%;
 }
 .overlay {
   position: absolute;
-  width: 256px;
-  left: 35%;
+  width: 50%;
+  left: 25%;
   top: 50%;
   opacity: 0.5;
-
   -webkit-transform: translateY(-50%);
   -moz-transform: translateY(-50%);
   -ms-transform: translateY(-50%);

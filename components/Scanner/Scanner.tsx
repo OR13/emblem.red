@@ -11,7 +11,7 @@ const Scanner = ({ onScan }: any) => {
   })
   return (
     <div id="wrapper">
-      <video id="reel" ref={ref} style={{ width: '100%' }} />
+      <video id="reel" ref={ref} />
       <img className="overlay" alt={"scan indicator"} src="/target.png" />
     </div>
   )
