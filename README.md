@@ -90,6 +90,7 @@ curl -s --http2 -H "accept: application/dns-json" "https://1.1.1.1/dns-query?nam
 1. There is no proof of posession binding, so anyone with the gif can display the emblem (could be a feature or a bug)
 1. This is a demo, and does not perform any real cryptographic checks, it just does encoding and decoding.
 1. There is no DNS confirmation, although both the payload hash and public key hash are registered in TLSA records.
+1. Only tested on pixel 5, and logitech C925e... works on both, slow on pixel 5, because of data density and camera resolution.
 
 ## License
 
