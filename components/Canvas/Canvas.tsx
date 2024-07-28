@@ -71,7 +71,7 @@ const Canvas = (props: any) => {
             width: '100%',
           }} />
           <Button variant="contained" endIcon={<CloudDownloadIcon />} onClick={() => {
-            downloader(gif, 'message.gif')
+            downloader(gif, 'emblem.gif')
           }}>
             Download
           </Button>

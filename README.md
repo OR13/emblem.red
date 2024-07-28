@@ -47,7 +47,7 @@ CBOR Extended Diagnostic Notation:
 
 Becomes:
 
-<img src="./message.gif" />
+<img src="./emblem.gif" />
 
 How the animated QR Codes Work:
 
