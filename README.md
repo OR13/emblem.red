@@ -69,6 +69,8 @@ flowchart LR
 
 Based on previous work done in [transmute.codes](https://github.com/transmute-industries/transmute.codes), and inspired by:
 
+- https://datatracker.ietf.org/doc/draft-steele-cose-hash-envelope/
+- https://datatracker.ietf.org/doc/draft-ietf-cose-merkle-tree-proofs/
 - https://datatracker.ietf.org/doc/draft-steele-spice-cryptovolense/
 - https://datatracker.ietf.org/doc/draft-steele-spice-tlsa-cnf/
 
