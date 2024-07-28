@@ -84,6 +84,13 @@ Or
 curl -s --http2 -H "accept: application/dns-json" "https://1.1.1.1/dns-query?name=emblem.red&type=TLSA" | jq '.'
 ```
 
+## Problems with this approach.
+
+1. The current demo sends text data instead of cbor... this makes verification take longer than normal.
+1. There is no proof of posession binding, so anyone with the gif can display the emblem (could be a feature or a bug)
+1. This is a demo, and does not perform any real cryptographic checks, it just does encoding and decoding.
+1. There is no DNS confirmation, although both the payload hash and public key hash are registered in TLSA records.
+
 ## License
 
 Licensed under
