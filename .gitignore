@@ -19,6 +19,6 @@
 archive.json
 draft-steele-diem-architecture-demo.xml
 Gemfile.lock
-package-lock.json
+/package-lock.json
 report.xml
 !requirements.txt
