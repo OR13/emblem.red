@@ -20,8 +20,19 @@ const COSE_TAGS: Record<number, string> = {
   61: "CWT",
 };
 const COSE_STRUCT = new Set([16, 17, 18, 96, 97, 98]);
-const COSE_HDR: Record<number, string> = { 1: "alg", 2: "crit", 3: "content type", 4: "kid", 5: "IV" };
+const COSE_HDR: Record<number, string> = {
+  1: "alg",
+  2: "crit",
+  3: "content type",
+  4: "kid",
+  5: "IV",
+  15: "CWT Claims", // RFC 9597
+  258: "payload-hash-alg", // draft-ietf-cose-hash-envelope
+  259: "preimage-ct",
+  260: "location",
+};
 const ALG: Record<string, string> = { "-7": "ES256", "-35": "ES384", "-36": "ES512", "-8": "EdDSA" };
+const HASH: Record<string, string> = { "-16": "SHA-256", "-43": "SHA-384", "-44": "SHA-512" };
 const CWT_CLAIMS: Record<number, string> = {
   1: "iss",
   2: "sub",
@@ -30,7 +41,28 @@ const CWT_CLAIMS: Record<number, string> = {
   5: "nbf",
   6: "iat",
   7: "cti",
+  8: "cnf", // RFC 8747
 };
+const CNF: Record<number, string> = { 1: "COSE_Key", 2: "Encrypted_COSE_Key", 3: "kid" };
+const COSE_KEY: Record<number, string> = { 1: "kty", 2: "kid", 3: "alg", [-1]: "crv", [-2]: "x", [-3]: "y" };
+const KTY: Record<string, string> = { "1": "OKP", "2": "EC2", "3": "RSA", "4": "Symmetric" };
+const CRV: Record<string, string> = { "1": "P-256", "2": "P-384", "3": "P-521", "6": "Ed25519" };
+
+/** Given a resolved map-key name, the key-name table for its (map) value. */
+function childKeyNames(keyName?: string): Record<number, string> | undefined {
+  if (keyName === "CWT Claims") return CWT_CLAIMS;
+  if (keyName === "cnf") return CNF;
+  if (keyName === "COSE_Key") return COSE_KEY;
+  return undefined;
+}
+/** Given a resolved map-key name, the value-name table for its (scalar) value. */
+function childValueNames(keyName?: string): Record<string, string> | undefined {
+  if (keyName === "alg") return ALG;
+  if (keyName === "payload-hash-alg") return HASH;
+  if (keyName === "kty") return KTY;
+  if (keyName === "crv") return CRV;
+  return undefined;
+}
 
 function hexOf(b: Uint8Array, start: number, end: number): string {
   let s = "";
@@ -138,7 +170,8 @@ class Reader {
           this.walk(indent + 1);
           this.walk(indent + 2, {
             keyLabel: keyName ? `${keyName}:` : undefined,
-            valueNames: keyName === "alg" ? ALG : undefined,
+            valueNames: childValueNames(keyName),
+            keyNames: childKeyNames(keyName),
           });
         }
         return;

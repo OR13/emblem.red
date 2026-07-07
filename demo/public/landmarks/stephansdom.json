@@ -1,0 +1,23 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Point",
+    "coordinates": [16.373506, 48.208518]
+  },
+  "properties": {
+    "name": "St. Stephen's Cathedral",
+    "localName": "Stephansdom",
+    "wikidata": "Q1568",
+    "city": "Vienna",
+    "country": "AT",
+    "protected": true,
+    "protection": {
+      "status": "protected",
+      "basis": "demonstration of a DIEM digital emblem",
+      "emblem": {
+        "mediaType": "application/digital-emblem+cose",
+        "discovery": "HTTPS resource record, SvcParam key65280, at emblem.red"
+      }
+    }
+  }
+}
