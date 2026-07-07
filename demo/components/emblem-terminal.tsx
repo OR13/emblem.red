@@ -10,20 +10,17 @@ type Seg = { text: string; cls?: string };
 type Line = { cmd: string } | { segs: Seg[] };
 
 const SESSION: Line[] = [
-  { segs: [{ text: "# is this domain protected?", cls: styles.dim }] },
+  { segs: [{ text: "# is this landmark protected?", cls: styles.dim }] },
   { segs: [{ text: "" }] },
   { cmd: "emblem verify emblem.red" },
   { segs: [{ text: "  ↳ HTTPS record · DoH", cls: styles.dim }] },
-  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "emblem in key65280 · 157 B" }] },
-  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "signature valid · ES256" }] },
-  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "sub = emblem.red" }] },
-  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "within validity window" }] },
-  { segs: [{ text: "  ● PROTECTED", cls: styles.boldGreen }] },
+  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "COSE_Sign1 · ES256" }] },
+  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "hash envelope · SHA-256" }] },
+  { segs: [{ text: "  ↳ GET stephansdom.json", cls: styles.dim }] },
+  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "digest matches payload" }] },
+  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "cnf holder key present" }] },
+  { segs: [{ text: "  ● PROTECTED", cls: styles.boldGreen }, { text: "  Stephansdom" }] },
   { segs: [{ text: "" }] },
-  { cmd: "emblem verify example.com" },
-  { segs: [{ text: "  ↳ HTTPS record · DoH", cls: styles.dim }] },
-  { segs: [{ text: "  ✗ ", cls: styles.red }, { text: "no emblem in record" }] },
-  { segs: [{ text: "  ● NOT PROTECTED", cls: styles.boldRed }] },
 ];
 
 function Prompt() {

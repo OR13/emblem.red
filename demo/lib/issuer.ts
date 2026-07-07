@@ -43,3 +43,19 @@ export function getIssuerKey(): Promise<IssuerKey> {
   })();
   return cached;
 }
+
+// Demo holder public key, placed in the emblem's `cnf` claim (RFC 8747) so the
+// holder can later prove possession. INSECURE demo value; the matching private
+// key is not needed by the issuer. Override with EMBLEM_HOLDER_JWK (public).
+const DEMO_HOLDER_JWK: JsonWebKey = {
+  kty: "EC",
+  crv: "P-256",
+  x: "XLGv7xfBaFtPu9kq5Dv9EWDORjxnsc9l7bqc1zMJCqA",
+  y: "DzKTaiV4sSTiPMvN_n_YsZybjsSLH_C8w3WHU-t7akQ",
+};
+
+export function getHolderKey(): { publicJwk: JsonWebKey; kid: string } {
+  const kid = process.env.EMBLEM_HOLDER_KID ?? "holder-demo-1";
+  const raw = process.env.EMBLEM_HOLDER_JWK;
+  return { publicJwk: raw ? (JSON.parse(raw) as JsonWebKey) : DEMO_HOLDER_JWK, kid };
+}

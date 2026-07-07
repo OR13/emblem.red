@@ -1,26 +1,54 @@
 import { NextResponse } from "next/server";
-import { getIssuerKey } from "@/lib/issuer";
-import { issueEmblem, verifyEmblem, toB64url, toHex } from "@/lib/emblem";
+import { getIssuerKey, getHolderKey } from "@/lib/issuer";
+import { issueHashEmblem, verifyEmblem, toB64url, toHex, EMBLEM_MEDIA_TYPE } from "@/lib/emblem";
 import { emblemToHttpsRecord } from "@/lib/svcb";
+import { RESOURCE_CONTENT_TYPE, RESOURCE_LOCATION, resourceFetchUrl } from "@/lib/resource";
 import { readJson } from "@/lib/http";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const { fqdn, ttl, aud } = await readJson<{ fqdn?: string; ttl?: number; aud?: string }>(req);
-  if (!fqdn || !/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(fqdn)) {
-    return NextResponse.json({ error: "provide a valid FQDN" }, { status: 400 });
+  const { fqdn } = await readJson<{ fqdn?: string }>(req);
+
+  const issuer = await getIssuerKey();
+  const holder = getHolderKey();
+
+  let resource: Uint8Array;
+  try {
+    const r = await fetch(resourceFetchUrl(), { cache: "no-store" });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    resource = new Uint8Array(await r.arrayBuffer());
+  } catch (e) {
+    return NextResponse.json({ error: `could not fetch resource to hash: ${(e as Error).message}` }, { status: 502 });
   }
-  const key = await getIssuerKey();
-  const emblem = await issueEmblem({ sub: fqdn, aud, exp: ttl ? Math.floor(Date.now() / 1000) + ttl : undefined }, key);
-  const record = emblemToHttpsRecord(fqdn, emblem, { ttl: ttl && ttl < 300 ? ttl : 300 });
-  // decode claims for display via a self-verify against our own public key
-  const decoded = await verifyEmblem(emblem, key.publicJwk, { expectedFqdn: fqdn });
+
+  const emblem = await issueHashEmblem(
+    {
+      resource,
+      contentType: RESOURCE_CONTENT_TYPE,
+      location: RESOURCE_LOCATION,
+      sub: RESOURCE_LOCATION,
+      holderPublicJwk: holder.publicJwk,
+      holderKid: holder.kid,
+    },
+    issuer
+  );
+
+  const decoded = await verifyEmblem(emblem, issuer.publicJwk);
+  const record = fqdn ? emblemToHttpsRecord(fqdn, emblem) : undefined;
+
   return NextResponse.json({
-    fqdn,
-    kid: key.kid,
+    mediaType: EMBLEM_MEDIA_TYPE,
+    kid: issuer.kid,
     emblem: { base64url: toB64url(emblem), hex: toHex(emblem), bytes: emblem.length },
-    claims: decoded.claims,
+    envelope: {
+      hashAlg: decoded.hashAlgName,
+      preimageContentType: decoded.preimageContentType,
+      location: decoded.location,
+      payloadHash: decoded.payloadHashHex,
+      sub: decoded.sub,
+      cnf: decoded.cnf,
+    },
     https: record,
   });
 }

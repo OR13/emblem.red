@@ -41,10 +41,10 @@ async function post(path: string, body: unknown) {
 }
 
 const STEPS = [
-  { icon: Certificate, n: "01", title: "Issue", body: "Sign a CWT (COSE_Sign1, ES256) whose subject is the domain.", ref: "RFC 8392 · 9052" },
+  { icon: Certificate, n: "01", title: "Issue", body: "Hash the resource and sign a COSE hash envelope (ES256) over the digest.", ref: "cose-hash-envelope" },
   { icon: Broadcast, n: "02", title: "Mark", body: "Add key65280 to the asset's own HTTPS record, beside its normal service params.", ref: "RFC 9460 · HTTPS RR" },
   { icon: MagnifyingGlass, n: "03", title: "Discover", body: "A client already fetches this record at connection setup, so the emblem rides along.", ref: "HTTPS query" },
-  { icon: SealCheck, n: "04", title: "Verify", body: "Check the signature, the validity window, and that the subject matches.", ref: "COSE verify" },
+  { icon: SealCheck, n: "04", title: "Verify", body: "Check the COSE signature, then re-fetch the resource and re-hash it.", ref: "COSE + digest" },
 ];
 
 export default function Home() {
@@ -102,9 +102,9 @@ export default function Home() {
                 Digital emblems, delivered over DNS.
               </h1>
               <p className="mt-5 max-w-xl text-lg leading-relaxed text-muted-foreground text-pretty">
-                A digital emblem is a signed, discoverable marker that binds a protected status to a
-                domain name. emblem.red issues them as CBOR Web Tokens, publishes them in DNS, and
-                verifies them from anywhere.
+                A digital emblem is a signed marker, discoverable in DNS, that binds a protected status
+                to a resource. emblem.red signs a COSE hash envelope over the resource, carries it in the
+                asset&apos;s HTTPS record, and verifies it from anywhere.
               </p>
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <Link href="/verify" className={cn(buttonVariants({ size: "lg" }))}>
@@ -157,6 +157,52 @@ export default function Home() {
             ))}
           </ol>
 
+          {/* Worked example */}
+          <div className="mt-12 border border-border">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border bg-muted/40 px-6 py-3">
+              <h3 className="font-heading text-lg font-bold">A worked example</h3>
+              <span className="font-mono text-xs text-muted-foreground">St. Stephen&apos;s Cathedral, Vienna</span>
+            </div>
+            <div className="grid gap-px bg-border md:grid-cols-2">
+              <div className="bg-card p-6">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  The resource is <span className="font-mono text-foreground">application/json</span> — GeoJSON that
+                  marks the landmark protected. The emblem is a COSE <span className="text-foreground">hash envelope</span>{" "}
+                  over those exact bytes, so it stays valid only while the resource is unchanged. CWT claims ride in the
+                  protected header (RFC 9597), kept minimal: a <code>sub</code> and a <code>cnf</code> key (RFC 8747) the
+                  holder can later prove possession of.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link href="/verify/emblem.red" className={cn(buttonVariants({ size: "sm" }))}>
+                    Verify this emblem
+                    <ArrowRight weight="bold" data-icon="inline-end" />
+                  </Link>
+                  <a href="/landmarks/stephansdom.json" target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                    View the resource
+                  </a>
+                  <a href="/api/emblem?fqdn=emblem.red" target="_blank" rel="noreferrer" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+                    Fetch the emblem
+                  </a>
+                </div>
+              </div>
+              <div className="bg-card p-6">
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 font-mono text-xs">
+                  <dt className="text-muted-foreground">resource</dt>
+                  <dd className="text-foreground">application/json (GeoJSON)</dd>
+                  <dt className="text-muted-foreground">emblem</dt>
+                  <dd className="break-all text-foreground">application/digital-emblem+cose</dd>
+                  <dt className="text-muted-foreground">payload</dt>
+                  <dd className="text-foreground">SHA-256 digest of the resource</dd>
+                  <dt className="text-muted-foreground">headers</dt>
+                  <dd className="text-foreground">258 hash-alg · 259 type · 260 location</dd>
+                  <dt className="text-muted-foreground">claims</dt>
+                  <dd className="text-foreground">15 CWT claims → sub · cnf</dd>
+                  <dt className="text-muted-foreground">cnf</dt>
+                  <dd className="text-foreground">COSE_Key (EC2 P-256) for PoP</dd>
+                </dl>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* Instrument */}
@@ -203,8 +249,8 @@ export default function Home() {
 
                 <TabsContent value="issue" className="mt-5">
                   <p className="mb-3 text-sm text-muted-foreground">
-                    Sign a CWT (COSE_Sign1, ES256) with <code className="font-mono">sub</code> = the FQDN,
-                    and render the HTTPS record.
+                    Sign a COSE hash envelope (ES256) over the resource digest, with CWT claims and a
+                    cnf key in the protected header, and render the HTTPS record.
                   </p>
                   <Button
                     disabled={busy === "issue"}
@@ -247,7 +293,7 @@ export default function Home() {
 
                 <TabsContent value="verify" className="mt-5">
                   <p className="mb-3 text-sm text-muted-foreground">
-                    Check the signature, validity window, and that <code className="font-mono">sub</code> == FQDN.
+                    Check the COSE signature, then re-fetch the referenced resource and re-hash it.
                   </p>
                   <div className="mb-3 flex flex-wrap gap-2">
                     {(["dns", "emblem", "record"] as const).map((s) => (
