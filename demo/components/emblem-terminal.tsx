@@ -3,25 +3,41 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./emblem-terminal.module.css";
 
-// A dependency-free animated terminal. Fixed height + overflow:hidden +
-// pointer-events:none means it can never reflow the page or capture scroll.
+// A dependency-free animated terminal that actually retrieves the resource.
+// Fixed height + overflow:hidden + pointer-events:none: it can never reflow the
+// page or capture scroll.
+
+const RESOURCE_PATH = "/landmarks/stephansdom.json";
 
 type Seg = { text: string; cls?: string };
 type Line = { cmd: string } | { segs: Seg[] };
 
-const SESSION: Line[] = [
-  { segs: [{ text: "# is this landmark protected?", cls: styles.dim }] },
-  { segs: [{ text: "" }] },
-  { cmd: "emblem verify emblem.red" },
-  { segs: [{ text: "  ↳ HTTPS record · DoH", cls: styles.dim }] },
-  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "COSE_Sign1 · ES256" }] },
-  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "hash envelope · SHA-256" }] },
-  { segs: [{ text: "  ↳ GET stephansdom.json", cls: styles.dim }] },
-  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "digest matches payload" }] },
-  { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "cnf holder key present" }] },
-  { segs: [{ text: "  ● PROTECTED", cls: styles.boldGreen }, { text: "  Stephansdom" }] },
-  { segs: [{ text: "" }] },
-];
+interface Landmark {
+  name: string;
+  protected: boolean;
+  coords?: [number, number];
+}
+
+function buildSession(lm: Landmark): Line[] {
+  const coords = lm.coords ? `${lm.coords[1].toFixed(4)}, ${lm.coords[0].toFixed(4)}` : "—";
+  return [
+    { segs: [{ text: "# is this landmark protected?", cls: styles.dim }] },
+    { segs: [{ text: "" }] },
+    { cmd: "emblem verify emblem.red" },
+    { segs: [{ text: "  ↳ HTTPS record · DoH", cls: styles.dim }] },
+    { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "COSE_Sign1 · ES256" }] },
+    { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "hash envelope · SHA-256" }] },
+    { segs: [{ text: "  ↳ GET stephansdom.json", cls: styles.dim }] },
+    { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "digest matches payload" }] },
+    { segs: [{ text: "    name: ", cls: styles.dim }, { text: lm.name }] },
+    { segs: [{ text: "    coords: ", cls: styles.dim }, { text: coords }] },
+    { segs: [{ text: "    protected: ", cls: styles.dim }, { text: String(lm.protected), cls: lm.protected ? styles.green : styles.red }] },
+    { segs: [{ text: "  ✓ ", cls: styles.green }, { text: "cnf holder key present" }] },
+    { segs: [{ text: "  ● PROTECTED", cls: styles.boldGreen }] },
+  ];
+}
+
+const FALLBACK: Landmark = { name: "St. Stephen's Cathedral", protected: true, coords: [16.3735, 48.2085] };
 
 function Prompt() {
   return <span className={styles.dim}>{"$ "}</span>;
@@ -61,14 +77,31 @@ export function EmblemTerminal() {
     const wait = (ms: number) => new Promise<void>((r) => timers.push(setTimeout(r, ms)));
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    async function loadLandmark(): Promise<Landmark> {
+      try {
+        const r = await fetch(RESOURCE_PATH, { cache: "no-store" });
+        if (!r.ok) return FALLBACK;
+        const j = await r.json();
+        const p = j?.properties ?? {};
+        return {
+          name: p.name ?? FALLBACK.name,
+          protected: Boolean(p.protected),
+          coords: Array.isArray(j?.geometry?.coordinates) ? j.geometry.coordinates : FALLBACK.coords,
+        };
+      } catch {
+        return FALLBACK;
+      }
+    }
+
     (async () => {
+      const session = buildSession(await loadLandmark());
       if (reduced) {
-        setDone(SESSION);
+        setDone(session);
         setFinished(true);
         return;
       }
       await wait(350);
-      for (const line of SESSION) {
+      for (const line of session) {
         if ("cmd" in line) {
           for (let c = 0; c <= line.cmd.length; c++) {
             setTyping(line.cmd.slice(0, c));
@@ -78,7 +111,7 @@ export function EmblemTerminal() {
           setDone((d) => [...d, line]);
           await wait(320);
         } else {
-          await wait(150);
+          await wait(140);
           setDone((d) => [...d, line]);
         }
       }

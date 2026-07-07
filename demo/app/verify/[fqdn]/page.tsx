@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { VerifyForm } from "@/components/verify-form";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
+import { ResourceCard } from "@/components/resource-card";
 import { scanAndVerify, normalizeFqdn, type ScanResult } from "@/lib/verify-service";
 
 export const runtime = "nodejs";
@@ -102,6 +103,11 @@ export default async function VerifyFqdnPage({ params }: { params: Promise<{ fqd
 
         <StatusHero result={result} />
         {result.found && <PrivacyNote name={result.ownerName} />}
+        {result.found && res?.landmark && (
+          <div className="mt-4">
+            <ResourceCard landmark={res.landmark} location={result.location} contentType={result.preimageContentType} />
+          </div>
+        )}
 
         {!result.found && (
           <Card className="mt-6">
