@@ -245,3 +245,45 @@ export async function verifyEmblem(emblem: Uint8Array, publicJwk: JsonWebKey): P
 export async function sha256Hex(data: Uint8Array): Promise<string> {
   return toHex(await sha256(data));
 }
+
+// ---- proof of possession (cnf key) -----------------------------------------
+
+/**
+ * The holder proves possession of the `cnf` key by signing a challenge with
+ * the matching private key. The proof is a COSE_Sign1 over the challenge.
+ */
+export async function createPossessionProof(holderPrivateJwk: JsonWebKey, challenge: Uint8Array): Promise<Uint8Array> {
+  const protectedMap = new Map<number, unknown>([[HDR_ALG, ALG_ES256]]);
+  const protectedHeader = encode(protectedMap);
+  const toBeSigned = encode(["Signature1", protectedHeader, new Uint8Array(0), challenge]);
+  const sk = await importSign(holderPrivateJwk);
+  const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, sk, bs(toBeSigned)));
+  return encode(new Tag(COSE_SIGN1_TAG, [protectedHeader, new Map(), challenge, sig]));
+}
+
+/**
+ * Verify a possession proof against a public key (the emblem's `cnf` key) and
+ * the expected challenge. Confirms the proof is a valid COSE_Sign1 by that key
+ * over exactly the challenge.
+ */
+export async function verifyPossessionProof(
+  holderPublicJwk: JsonWebKey,
+  proof: Uint8Array,
+  challenge: Uint8Array
+): Promise<boolean> {
+  let arr: unknown[];
+  try {
+    arr = unwrap(decode(proof));
+  } catch {
+    return false;
+  }
+  const [protectedHeader, , payload, signature] = arr as [Uint8Array, unknown, Uint8Array, Uint8Array];
+  if (!(payload instanceof Uint8Array) || toHex(payload) !== toHex(challenge)) return false;
+  const toBeSigned = encode(["Signature1", protectedHeader, new Uint8Array(0), payload]);
+  try {
+    const vk = await importVerify(holderPublicJwk);
+    return await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, vk, bs(signature), bs(toBeSigned));
+  } catch {
+    return false;
+  }
+}

@@ -5,6 +5,15 @@ import { discoverEmblem } from "./svcb";
 import { resolveFetchUrl } from "./resource";
 import { commentedHex, groupedHex, type HexLine } from "./cbor-hex";
 
+export interface Landmark {
+  name?: string;
+  localName?: string;
+  city?: string;
+  country?: string;
+  protected?: boolean;
+  coords?: [number, number]; // [lon, lat]
+}
+
 export interface ResourceCheck {
   fetched: boolean;
   hashMatch?: boolean;
@@ -12,6 +21,8 @@ export interface ResourceCheck {
   contentType?: string;
   fetchedFrom?: string;
   error?: string;
+  /** Parsed structured data (GeoJSON landmark) inside the application/json resource. */
+  landmark?: Landmark;
 }
 
 export interface ScanResult {
@@ -93,12 +104,29 @@ export async function scanAndVerify(rawFqdn: string): Promise<ScanResult> {
         const bytes = new Uint8Array(await res.arrayBuffer());
         const h = await sha256Hex(bytes);
         hashOk = h === v.payloadHashHex;
+        let landmark: Landmark | undefined;
+        try {
+          const j = JSON.parse(new TextDecoder().decode(bytes));
+          const p = j?.properties ?? {};
+          const c = j?.geometry?.coordinates;
+          landmark = {
+            name: p.name,
+            localName: p.localName,
+            city: p.city,
+            country: p.country,
+            protected: Boolean(p.protected),
+            coords: Array.isArray(c) && c.length >= 2 ? [c[0], c[1]] : undefined,
+          };
+        } catch {
+          /* not JSON we understand */
+        }
         resource = {
           fetched: true,
           hashMatch: hashOk,
           bytes: bytes.length,
           contentType: res.headers.get("content-type")?.split(";")[0] ?? undefined,
           fetchedFrom: url,
+          landmark,
         };
       } else {
         resource = { fetched: false, error: `HTTP ${res.status}`, fetchedFrom: url };
