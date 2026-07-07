@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { GithubLogo } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BrandMark } from "@/components/brand-mark";
+
+const REPO_URL = "https://github.com/OR13/emblem.red";
 
 export function Wordmark() {
   return (
@@ -28,6 +31,15 @@ export function SiteHeader({ showVerify = true }: { showVerify?: boolean }) {
             className="hidden px-2 text-sm text-muted-foreground transition-colors hover:text-foreground sm:inline"
           >
             DIEM WG
+          </a>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Contribute on GitHub"
+            className="inline-flex h-8 w-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <GithubLogo className="h-5 w-5" weight="fill" />
           </a>
           <ThemeToggle />
           {showVerify && (

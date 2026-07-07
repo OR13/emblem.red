@@ -17,7 +17,8 @@ const COLUMNS: { heading: string; links: { label: string; href: string }[] }[] =
         label: "Architecture draft",
         href: "https://or13.github.io/emblem.red/draft-steele-diem-architecture-demo.html",
       },
-      { label: "Source · OR13/emblem.red", href: "https://github.com/OR13/emblem.red" },
+      { label: "Contribute · OR13/emblem.red", href: "https://github.com/OR13/emblem.red" },
+      { label: "Issues", href: "https://github.com/OR13/emblem.red/issues" },
     ],
   },
   {

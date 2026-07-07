@@ -27,7 +27,7 @@ pi: [toc, sortrefs, symrefs]
 
 venue:
   github: "OR13/emblem.red"
-  latest: "https://emblem.red/draft-steele-diem-architecture-demo.html"
+  latest: "https://or13.github.io/emblem.red/draft-steele-diem-architecture-demo.html"
 
 author:
  -
