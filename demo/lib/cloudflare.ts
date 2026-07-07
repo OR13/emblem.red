@@ -1,9 +1,11 @@
 import "server-only";
-import { EMBLEM_SVCPARAM_KEY, escapeCharString, EMBLEM_OWNER_PREFIX } from "./svcb";
+import { emblemToHttpsRecord } from "./svcb";
 
-// Optional Cloudflare integration for publishing/removing the SVCB record.
-// Enabled only when both env vars are present. Without them, mark/unmark
-// return the record to be published manually.
+// Optional Cloudflare integration for publishing/removing the emblem. The
+// emblem is carried in the asset's own HTTPS record (key65280) — the record
+// clients already fetch at connection setup — so there is no dedicated,
+// emblem-specific name to reveal that anyone is looking. Enabled only when both
+// env vars are present; otherwise mark/unmark return the record to publish.
 
 const API = "https://api.cloudflare.com/client/v4";
 
@@ -24,9 +26,9 @@ interface CfRecord {
   type: string;
 }
 
-async function findRecord(name: string): Promise<CfRecord | null> {
+async function findHttpsRecord(name: string): Promise<CfRecord | null> {
   const zone = process.env.CLOUDFLARE_ZONE_ID;
-  const res = await fetch(`${API}/zones/${zone}/dns_records?type=SVCB&name=${encodeURIComponent(name)}`, {
+  const res = await fetch(`${API}/zones/${zone}/dns_records?type=HTTPS&name=${encodeURIComponent(name)}`, {
     headers: headers(),
   });
   const json = (await res.json()) as { result?: CfRecord[] };
@@ -42,15 +44,9 @@ export interface DnsWriteResult {
 
 export async function publishEmblem(fqdn: string, emblem: Uint8Array): Promise<DnsWriteResult> {
   const zone = process.env.CLOUDFLARE_ZONE_ID;
-  const name = EMBLEM_OWNER_PREFIX + fqdn.replace(/\.$/, "");
-  const value = `key${EMBLEM_SVCPARAM_KEY}="${escapeCharString(emblem)}"`;
-  const body = {
-    type: "SVCB",
-    name,
-    data: { priority: 1, target: ".", value },
-    ttl: 300,
-  };
-  const existing = await findRecord(name);
+  const rec = emblemToHttpsRecord(fqdn, emblem);
+  const body = { type: "HTTPS", name: rec.owner, data: { priority: rec.priority, target: rec.target, value: rec.value }, ttl: rec.ttl };
+  const existing = await findHttpsRecord(rec.owner);
   const url = existing ? `${API}/zones/${zone}/dns_records/${existing.id}` : `${API}/zones/${zone}/dns_records`;
   const res = await fetch(url, {
     method: existing ? "PUT" : "POST",
@@ -59,19 +55,19 @@ export async function publishEmblem(fqdn: string, emblem: Uint8Array): Promise<D
   });
   const json = (await res.json()) as { success: boolean; errors?: unknown };
   if (!json.success) return { published: false, provider: "cloudflare", error: JSON.stringify(json.errors) };
-  return { published: true, provider: "cloudflare", detail: name };
+  return { published: true, provider: "cloudflare", detail: `${rec.owner} HTTPS` };
 }
 
 export async function removeEmblem(fqdn: string): Promise<DnsWriteResult> {
   const zone = process.env.CLOUDFLARE_ZONE_ID;
-  const name = EMBLEM_OWNER_PREFIX + fqdn.replace(/\.$/, "");
-  const existing = await findRecord(name);
-  if (!existing) return { published: false, provider: "cloudflare", detail: "no record found" };
+  const name = fqdn.replace(/\.$/, "");
+  const existing = await findHttpsRecord(name);
+  if (!existing) return { published: false, provider: "cloudflare", detail: "no HTTPS record found" };
   const res = await fetch(`${API}/zones/${zone}/dns_records/${existing.id}`, {
     method: "DELETE",
     headers: headers(),
   });
   const json = (await res.json()) as { success: boolean; errors?: unknown };
   if (!json.success) return { published: false, provider: "cloudflare", error: JSON.stringify(json.errors) };
-  return { published: true, provider: "cloudflare", detail: `removed ${name}` };
+  return { published: true, provider: "cloudflare", detail: `removed ${name} HTTPS` };
 }

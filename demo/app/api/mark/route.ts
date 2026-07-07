@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getIssuerKey } from "@/lib/issuer";
 import { issueEmblem, fromB64url } from "@/lib/emblem";
-import { emblemToSvcbRecord } from "@/lib/svcb";
+import { emblemToHttpsRecord } from "@/lib/svcb";
 import { cloudflareConfigured, publishEmblem } from "@/lib/cloudflare";
 import { readJson } from "@/lib/http";
 
@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     const key = await getIssuerKey();
     bytes = await issueEmblem({ sub: fqdn }, key);
   }
-  const record = emblemToSvcbRecord(fqdn, bytes);
+  const record = emblemToHttpsRecord(fqdn, bytes);
 
   if (cloudflareConfigured()) {
     const result = await publishEmblem(fqdn, bytes);
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     marked: false,
     via: "manual",
-    note: "DNS provider not configured (set CLOUDFLARE_API_TOKEN + CLOUDFLARE_ZONE_ID). Publish this record to mark the FQDN:",
+    note: "DNS provider not configured (set CLOUDFLARE_API_TOKEN + CLOUDFLARE_ZONE_ID). Publish this HTTPS record to mark the FQDN:",
     record,
   });
 }

@@ -1,17 +1,18 @@
-// SVCB (RFC 9460) delivery of a digital emblem.
+// HTTPS/SVCB (RFC 9460) delivery of a digital emblem.
 //
-// The emblem is carried in a ServiceMode SVCB record at owner name
-// `emblem.<fqdn>`, inside a private-use SvcParamKey (key65280, range
-// 65280-65534). On the wire the value is the raw COSE/CBOR octets; in
-// presentation (zone-file) form arbitrary binary is escaped byte-by-byte as
-// \DDD decimal escapes (RFC 9460 §2.1). We keep the key out of `mandatory`
-// so records degrade gracefully for non-DIEM consumers.
+// The emblem is carried in the asset's own ServiceMode HTTPS record (the record
+// clients already fetch at connection setup), inside a private-use SvcParamKey
+// (key65280, range 65280-65534), alongside the normal alpn param. There is no
+// dedicated `emblem.<fqdn>` name — that would reveal interest in the emblem. On
+// the wire the value is the raw COSE/CBOR octets; in presentation (zone-file)
+// form arbitrary binary is escaped byte-by-byte as \DDD decimal escapes
+// (RFC 9460 §2.1). We keep the key out of `mandatory` so the record degrades
+// gracefully for ordinary clients, which ignore the unknown SvcParam.
 
 import { toB64url, fromB64url } from "./emblem";
+import { resolveWire, QTYPE } from "./doh";
 
 export const EMBLEM_SVCPARAM_KEY = 65280; // private use
-export const EMBLEM_OWNER_PREFIX = "emblem.";
-const SVCB_QTYPE = 64;
 
 // ---- DNS presentation char-string escaping (RFC 1035 §5.1 / RFC 9460 App A)
 
@@ -53,13 +54,15 @@ export function unescapeCharString(s: string): Uint8Array {
 
 // ---- record construction ---------------------------------------------------
 
-export interface SvcbRecord {
-  owner: string; // emblem.<fqdn>
-  type: "SVCB";
+export interface HttpsRecord {
+  owner: string; // the asset FQDN itself
+  type: "HTTPS";
   ttl: number;
   priority: number;
   target: string;
-  /** zone-file presentation of the SvcParams value (binary-clean, \DDD) */
+  /** SvcParams value string carried in the record (alpn + emblem key65280). */
+  value: string;
+  /** zone-file presentation of just the emblem SvcParam (binary-clean, \DDD). */
   presentation: string;
   /** full zone-file line */
   zoneLine: string;
@@ -67,28 +70,28 @@ export interface SvcbRecord {
   base64url: string;
 }
 
-export function emblemToSvcbRecord(
+/**
+ * Build the asset's own HTTPS(65) record carrying the emblem in key65280,
+ * alongside a normal `alpn` SvcParam. This is the *only* delivery channel: the
+ * emblem rides in the record clients already fetch at connection setup, so an
+ * emblem lookup is indistinguishable from an ordinary client connecting. There
+ * is deliberately no dedicated `emblem.<fqdn>` name — that would reveal that a
+ * party is looking for an emblem.
+ */
+export function emblemToHttpsRecord(
   fqdn: string,
   emblem: Uint8Array,
-  opts: { ttl?: number; priority?: number; target?: string } = {}
-): SvcbRecord {
+  opts: { ttl?: number; priority?: number; target?: string; alpn?: string } = {}
+): HttpsRecord {
   const ttl = opts.ttl ?? 300;
   const priority = opts.priority ?? 1; // nonzero => ServiceMode
   const target = opts.target ?? ".";
-  const owner = EMBLEM_OWNER_PREFIX + fqdn.replace(/\.$/, "");
-  const escaped = escapeCharString(emblem);
-  const presentation = `key${EMBLEM_SVCPARAM_KEY}="${escaped}"`;
-  const zoneLine = `${owner}. ${ttl} IN SVCB ${priority} ${target} ${presentation}`;
-  return {
-    owner,
-    type: "SVCB",
-    ttl,
-    priority,
-    target,
-    presentation,
-    zoneLine,
-    base64url: toB64url(emblem),
-  };
+  const alpn = opts.alpn ?? "h3,h2";
+  const owner = fqdn.replace(/\.$/, "");
+  const presentation = `key${EMBLEM_SVCPARAM_KEY}="${escapeCharString(emblem)}"`;
+  const value = `alpn="${alpn}" ${presentation}`;
+  const zoneLine = `${owner}. ${ttl} IN HTTPS ${priority} ${target} ${value}`;
+  return { owner, type: "HTTPS", ttl, priority, target, value, presentation, zoneLine, base64url: toB64url(emblem) };
 }
 
 // ---- parsing an SVCB rdata presentation for the emblem ---------------------
@@ -114,43 +117,106 @@ export interface DohResult {
   found: boolean;
   emblem?: Uint8Array;
   rdata?: string;
+  /** The owner name actually queried (always the asset FQDN). */
+  qname?: string;
+  /** The record type queried (always HTTPS). */
+  qtype?: "HTTPS";
+  transport?: "wireformat" | "json";
   raw?: unknown;
   error?: string;
 }
 
+const HTTPS_QTYPE = 65;
+
+/** Render raw RDATA octets in RFC 3597 generic form (`\# LEN HEX`) for display. */
+function toGenericForm(bytes: Uint8Array): string {
+  let hex = "";
+  for (let i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, "0") + (i % 2 ? " " : "");
+  return `\\# ${bytes.length} ${hex.trim()}`;
+}
+
 /**
- * Query DNS-over-HTTPS for the SVCB record at emblem.<fqdn> and extract the
- * emblem. Uses Cloudflare's JSON DoH endpoint by default.
+ * Discover a digital emblem for `fqdn`.
+ *
+ * The emblem is delivered **only** in the asset's own HTTPS(65) resource
+ * record (key65280) — the exact record every OS/browser already fetches at
+ * connection setup. A validator issues the same query an ordinary client does,
+ * so an emblem lookup is indistinguishable from a normal visit: the zone
+ * operator cannot tell a protection probe from ordinary traffic, and there is
+ * no dedicated name whose lookup would betray interest in the emblem.
+ *
+ * Transport is RFC 8484 DoH wireformat (`application/dns-message`) with EDNS
+ * padding, so on-path observers see only ordinary encrypted DNS; the JSON DoH
+ * API is a fallback only.
  */
 export async function discoverEmblem(
   fqdn: string,
   resolver = "https://cloudflare-dns.com/dns-query"
 ): Promise<DohResult> {
-  const name = EMBLEM_OWNER_PREFIX + fqdn.replace(/\.$/, "");
-  const url = `${resolver}?name=${encodeURIComponent(name)}&type=SVCB`;
+  const asset = fqdn.replace(/\.$/, "");
+
+  // RFC 8484 wireformat, HTTPS(65) at the asset's own name.
   try {
-    const res = await fetch(url, { headers: { accept: "application/dns-json" } });
-    if (!res.ok) return { found: false, error: `DoH HTTP ${res.status}` };
+    const wire = await resolveWire(asset, QTYPE.HTTPS, resolver);
+    if (wire.error) throw new Error(wire.error);
+    if (wire.rdata) {
+      const emblem = emblemFromSvcbWire(wire.rdata);
+      if (emblem) return { found: true, emblem, rdata: toGenericForm(wire.rdata), qname: asset, qtype: "HTTPS", transport: "wireformat" };
+      return { found: false, qname: asset, qtype: "HTTPS", transport: "wireformat", error: "HTTPS record present, but it carries no emblem" };
+    }
+  } catch {
+    /* fall back to JSON */
+  }
+
+  // JSON DoH fallback (HTTPS record).
+  try {
+    const url = `${resolver}?name=${encodeURIComponent(asset)}&type=HTTPS`;
+    const res = await fetch(url, { headers: { accept: "application/dns-json" }, cache: "no-store" });
+    if (!res.ok) return { found: false, qname: asset, qtype: "HTTPS", error: `DoH HTTP ${res.status}` };
     const json = (await res.json()) as { Answer?: Array<{ type: number; data: string }> };
-    const answers = (json.Answer ?? []).filter((a) => a.type === SVCB_QTYPE);
+    const answers = (json.Answer ?? []).filter((a) => a.type === HTTPS_QTYPE);
     for (const a of answers) {
       const emblem = emblemFromSvcbPresentation(a.data) ?? emblemFromGeneric(a.data);
-      if (emblem) return { found: true, emblem, rdata: a.data, raw: json };
+      if (emblem) return { found: true, emblem, rdata: a.data, qname: asset, qtype: "HTTPS", transport: "json", raw: json };
     }
-    return { found: false, raw: json, error: answers.length ? "no emblem SvcParam in record" : "no SVCB record" };
+    return { found: false, qname: asset, qtype: "HTTPS", transport: "json", raw: json, error: answers.length ? "HTTPS record present, but it carries no emblem" : "no HTTPS record carrying an emblem" };
   } catch (e) {
-    return { found: false, error: (e as Error).message };
+    return { found: false, qname: asset, qtype: "HTTPS", error: (e as Error).message };
   }
 }
 
-/** Some resolvers return SVCB rdata in RFC 3597 generic form: `\# LEN HEX`. */
+/**
+ * Some resolvers (notably Cloudflare's own DoH) return SVCB rdata in RFC 3597
+ * generic form: `\# LEN HEX`. Parse the wire RDATA and extract the emblem
+ * SvcParam value. Wire layout (RFC 9460 §2.2):
+ *   SvcPriority (uint16) | TargetName (length-prefixed labels, 0-terminated) |
+ *   *(SvcParamKey uint16 | SvcParamValueLen uint16 | SvcParamValue)
+ */
 function emblemFromGeneric(data: string): Uint8Array | null {
-  const m = data.match(/\\#\s+\d+\s+([0-9a-fA-F\s]+)/);
+  const m = data.match(/\\#\s+(\d+)\s+([0-9a-fA-F\s]+)/);
   if (!m) return null;
-  const hex = m[1].replace(/\s+/g, "");
+  const hex = m[2].replace(/\s+/g, "");
   const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  // Generic form encodes the whole RDATA; locating the SvcParam inside is
-  // resolver-specific, so we only surface it for debugging.
+  return emblemFromSvcbWire(bytes);
+}
+
+/**
+ * Extract the emblem SvcParam (key65280) from raw SVCB RDATA wire bytes
+ * (RFC 9460 §2.2): SvcPriority (uint16) | TargetName (labels, 0-terminated) |
+ * *(SvcParamKey uint16 | SvcParamValueLen uint16 | SvcParamValue).
+ */
+export function emblemFromSvcbWire(bytes: Uint8Array): Uint8Array | null {
+  let off = 2; // skip SvcPriority
+  while (off < bytes.length && bytes[off] !== 0) off += bytes[off] + 1; // TargetName labels
+  off += 1; // consume the root (0) label
+  while (off + 4 <= bytes.length) {
+    const paramKey = (bytes[off] << 8) | bytes[off + 1];
+    const len = (bytes[off + 2] << 8) | bytes[off + 3];
+    off += 4;
+    if (off + len > bytes.length) break;
+    if (paramKey === EMBLEM_SVCPARAM_KEY) return bytes.slice(off, off + len);
+    off += len;
+  }
   return null;
 }

@@ -1,0 +1,39 @@
+.terminal {
+  border: 1px solid var(--border);
+  overflow: hidden;
+  width: 100%;
+  min-height: 340px;
+  height: 340px;
+  background: #faf9f8;
+  /* Display-only: never capture wheel/touch so the page scrolls normally. */
+  pointer-events: none;
+}
+:global(html.dark) .terminal {
+  background: #1b1512;
+  border-color: oklch(1 0 0 / 0.12);
+}
+
+.terminal :global(.xterm),
+.terminal :global(.xterm-viewport),
+.terminal :global(.xterm-screen) {
+  background-color: transparent !important;
+}
+
+.terminal :global(.xterm) {
+  padding: 1rem 1.25rem;
+  outline: none;
+  height: 100%;
+}
+
+.terminal :global(.xterm-viewport) {
+  overflow: hidden !important;
+  scrollbar-width: none;
+}
+
+.terminal :global(.xterm-viewport)::-webkit-scrollbar {
+  display: none;
+}
+
+.terminal :global(.xterm-helper-textarea) {
+  outline: none !important;
+}

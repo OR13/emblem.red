@@ -1,22 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Nunito_Sans, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fontSans = Nunito_Sans({
   subsets: ["latin"],
+  variable: "--font-sans",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fontHeading = Nunito_Sans({
   subsets: ["latin"],
+  weight: ["800", "900"],
+  variable: "--font-heading",
+});
+
+const fontMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
-  title: "emblem.red — DNS-delivered digital emblems",
+  title: "emblem.red — digital emblems, delivered over DNS",
   description:
-    "Issue, verify, mark, and unmark DNS names with CWT-based digital emblems delivered over SVCB records. A DIEM architecture demo.",
+    "Issue, mark, verify, and unmark domains with CWT-based digital emblems carried in the asset's own HTTPS DNS record. A demonstration companion to the IETF DIEM working group.",
 };
 
 export default function RootLayout({
@@ -27,11 +35,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={cn(
+        "h-full antialiased font-sans",
+        fontSans.variable,
+        fontHeading.variable,
+        fontMono.variable
+      )}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster />
+        <ThemeProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
