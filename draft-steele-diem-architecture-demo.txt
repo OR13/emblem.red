@@ -4,8 +4,8 @@
 
 Digital Emblems                                                O. Steele
 Internet-Draft                                              Tradeverifyd
-Intended status: Informational                               6 July 2026
-Expires: 7 January 2027
+Intended status: Informational                               7 July 2026
+Expires: 8 January 2027
 
 
    An Architecture for DNS-Delivered Digital Emblems (Demonstration)
@@ -52,7 +52,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 7 January 2027.
+   This Internet-Draft will expire on 8 January 2027.
 
 Copyright Notice
 
