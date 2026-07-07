@@ -14,16 +14,24 @@ Expires: 8 January 2027
 Abstract
 
    This document describes a demonstration architecture for issuing,
-   verifying, marking, and unmarking Fully Qualified Domain Names
-   (FQDNs) with digital emblems.  A digital emblem is modeled as a CBOR
-   Web Token (CWT) secured with a COSE single-signer structure, and it
-   is delivered entirely over the Domain Name System (DNS) using Service
-   Binding (SVCB) resource records, including a mechanism for cleanly
-   conveying the binary token on the wire.  The document is a companion
-   to a running demonstration hosted at emblem.red.  It is intended to
-   explore the Digital Emblems (DIEM) architecture against the working
-   group's use cases and requirements; it is not a standards-track
-   specification.
+   verifying, marking, and unmarking assets, identified by Fully
+   Qualified Domain Names (FQDNs), with digital emblems.  A digital
+   emblem is modeled as a COSE hash envelope: a COSE single-signer
+   structure whose payload is the cryptographic hash of an external
+   resource, and whose protected header carries the hash algorithm, the
+   resource's content type and location, a minimal set of CBOR Web Token
+   (CWT) claims, and a confirmation (cnf) key for later proof of
+   possession.  The entire emblem is delivered over the Domain Name
+   System (DNS) inside the asset's own HTTPS resource record, in a
+   private-use service parameter, so that the query used to discover an
+   emblem is indistinguishable from the query an ordinary client already
+   issues to connect to the asset.  This lets a validator check whether
+   an asset is protected without revealing, to the infrastructure
+   provider or to an on-path observer, any intent to discover emblems.
+   The document is a companion to a running demonstration hosted at
+   emblem.red.  It explores the Digital Emblems (DIEM) architecture
+   against the working group's use cases and requirements; it is not a
+   standards-track specification.
 
 About This Document
 
@@ -73,18 +81,24 @@ Table of Contents
    1.  Introduction
    2.  Conventions and Definitions
    3.  Architecture Overview
-   4.  Emblems as CBOR Web Tokens
-   5.  Delivering Emblems over DNS with SVCB
-     5.1.  Binary encoding
-     5.2.  Size and transport
-   6.  Marking and Unmarking
-   7.  Validation
-   8.  Relationship to DIEM Requirements
-   9.  Security Considerations
-   10. IANA Considerations
-   11. References
-     11.1.  Normative References
-     11.2.  Informative References
+   4.  The Emblem: a COSE Hash Envelope
+     4.1.  CWT claims in the protected header
+     4.2.  The Resource
+   5.  Delivering the Entire Emblem over DNS
+   6.  Generic Discovery and Unobservability
+   7.  Delivering Emblems in the HTTPS Resource Record
+     7.1.  Binary encoding
+     7.2.  Graceful degradation
+     7.3.  Size and transport
+   8.  Marking and Unmarking
+   9.  Validation
+   10. Proof of Possession
+   11. Relationship to DIEM Requirements
+   12. Security Considerations
+   13. IANA Considerations
+   14. References
+     14.1.  Normative References
+     14.2.  Informative References
    Acknowledgments
    Author's Address
 
@@ -97,8 +111,8 @@ Table of Contents
    framework such as International Humanitarian Law (IHL).  Digital
    emblems extend this concept to network infrastructure: an asset,
    identified by a Fully Qualified Domain Name (FQDN), can signal to a
-   validating entity that it should be protected or treated in a
-   specific way.
+   validating entity that it, or a resource it represents, should be
+   protected or treated in a specific way.
 
    The Digital Emblems (DIEM) working group is chartered, in its initial
    phase, to address emblems that are discoverable via DNS and that
@@ -110,21 +124,32 @@ Table of Contents
    with a running demonstration hosted at emblem.red.  The demonstration
    allows an operator to:
 
-   *  *issue* a digital emblem for an FQDN,
+   *  *issue* a digital emblem that attests a resource,
 
-   *  *verify* a digital emblem retrieved for an FQDN,
+   *  *mark* an FQDN by publishing that emblem in DNS,
 
-   *  *mark* an FQDN by publishing its emblem in DNS, and
+   *  *verify* an emblem discovered for an FQDN, and
 
    *  *unmark* an FQDN by removing that emblem from DNS.
 
-   The architecture models a digital emblem as a CBOR Web Token (CWT)
-   [RFC8392] secured with a COSE single-signer structure (Section 4.2 of
-   [RFC9052]), and delivers it over DNS using Service Binding (SVCB)
-   resource records [RFC9460].  The choice of a compact, self-describing
-   binary token and a query-driven delivery channel is intended to keep
-   validation possible in constrained and partially disconnected
-   environments.
+   Two design choices distinguish this architecture and are the focus of
+   this document:
+
+   1.  The emblem is a COSE hash envelope
+       ([I-D.ietf-cose-hash-envelope]): its payload is the hash of an
+       external resource rather than an inlined claim set.  The signed
+       metadata needed to act on the emblem (the hash algorithm, the
+       resource's content type and location, a minimal set of CWT claims
+       per [RFC9597], and a confirmation key per [RFC8747]) travels in
+       the COSE protected header.  The *entire emblem* is therefore
+       self-contained and is delivered entirely over DNS; see Section 5.
+
+   2.  The emblem is carried in the asset's *own HTTPS resource record*
+       [RFC9460], in a private-use service parameter, rather than at a
+       dedicated emblem-specific name.  A validator issues the very
+       query that an ordinary client already issues when connecting to
+       the asset, so discovering an emblem does not disclose the intent
+       to do so.  See Section 6.
 
    This document is informational and describes a demonstration.  It
    does not mandate a wire format for the working group, and it is not a
@@ -155,8 +180,15 @@ Table of Contents
 
    In addition:
 
-   Emblem:  The signed CWT that carries the protective marking for an
-      Asset.
+   Emblem:  A COSE hash envelope that carries the protective marking for
+      an Asset, signed by the Emblem Issuer.
+
+   Resource:  The external content attested by the Emblem.  The Emblem's
+      payload is the hash of the Resource; the Resource itself is
+      retrieved separately, if at all.
+
+   Holder:  The party that controls the private key confirmed by the
+      Emblem's cnf claim and can, on demand, prove possession of it.
 
    Marking:  The act of publishing an Emblem such that a Validator can
       discover it for a given FQDN.
@@ -168,110 +200,250 @@ Table of Contents
    The architecture defines four operations over an Asset identified by
    an FQDN.
 
-   +---------------+   issue    +-----------------+
-   | Emblem Issuer |----------->|  Emblem (CWT)   |
-   | (+ Authorizing|            |  COSE_Sign1     |
-   |    Entity)    |            +--------+--------+
-   +---------------+                     | mark (publish)
-                                         v
-                                +-----------------+
-                                |  DNS (SVCB RR)  |
-                                |  emblem.<fqdn>  |
-                                +--------+--------+
-                                         | query
-                                         v
-   +---------------+  verify    +-----------------+
-   |   Validator   |<-----------|  Emblem (CWT)   |
-   +---------------+            +-----------------+
++---------------+  issue   +------------------------+
+| Emblem Issuer |--------->|  Emblem                |
+| (+ Authorizing|          |  COSE_Sign1 hash       |
+|    Entity)    |          |  envelope over a       |
++---------------+          |  Resource; cnf key     |
+                           +-----------+------------+
+                                       | mark (publish in the
+                                       | asset's HTTPS record)
+                                       v
+                           +------------------------+
+                           |  DNS: HTTPS RR at       |
+                           |  <fqdn>, SvcParam       |
+                           |  key65280               |
+                           +-----------+------------+
+                                       | ordinary connection-setup query
+                                       v
++---------------+ verify   +------------------------+
+|   Validator   |<---------|  Emblem                |
++------+--------+          +------------------------+
+       | (optional) fetch + re-hash Resource;
+       | (optional) challenge Holder for proof of possession
+       v
++------------------------+
+|  Resource (e.g. JSON)  |
++------------------------+
 
-             Figure 1: Information flow for the four operations
+          Figure 1: Information flow for the four operations
 
    Issue:  The Emblem Issuer, optionally acting under an Authorizing
-      Entity, creates a CWT whose claims describe the protection
-      asserted for the Asset, and signs it as a COSE_Sign1.  See
-      Section 4.
+      Entity, hashes the Resource, and signs a COSE hash envelope whose
+      payload is that hash and whose protected header carries the hash
+      algorithm, the Resource's content type and location, minimal CWT
+      claims, and a confirmation key.  See Section 4.
 
-   Mark:  The Emblem Issuer publishes the Emblem in DNS as an SVCB
-      resource record for a name derived from the Asset's FQDN.  See
-      Section 5.
+   Mark:  The Emblem Issuer publishes the Emblem in the Asset's own
+      HTTPS resource record, in a private-use service parameter.  See
+      Section 7.
 
-   Verify:  A Validator retrieves the Emblem for an FQDN, checks the
-      COSE signature, and confirms that the Emblem was issued for that
-      specific FQDN.  See Section 7.
+   Verify:  A Validator discovers the Emblem by issuing an ordinary
+      HTTPS query for the FQDN, checks the COSE signature, and reads the
+      signed metadata.  It MAY then retrieve the Resource and confirm
+      its hash, and MAY challenge the Holder to prove possession of the
+      cnf key.  See Section 9.
 
-   Unmark:  The Emblem Issuer removes the SVCB resource record.  See
-      Section 6.
+   Unmark:  The Emblem Issuer removes the emblem service parameter from
+      the HTTPS record.  See Section 8.
 
    The architecture MUST NOT assume that a Validator has general
    Internet access beyond the ability to resolve DNS for the queried
-   name; this constraint follows [I-D.ietf-diem-requirements].  In
-   particular, trust anchors and any material required to check
-   authorization are either provisioned out of band or carried within
-   the Emblem itself.
+   name; this constraint follows [I-D.ietf-diem-requirements].  Trust
+   anchors and any material required to check authorization are
+   provisioned out of band or carried within the Emblem itself.  Because
+   the entire Emblem is delivered in the DNS answer, the assertion "this
+   Asset is protected" is verifiable from that answer alone; retrieving
+   the Resource is an additional, optional step (see Section 5).
 
-4.  Emblems as CBOR Web Tokens
+4.  The Emblem: a COSE Hash Envelope
 
-   An Emblem is a CWT [RFC8392].  Claims are encoded as a CBOR [RFC8949]
-   map using the integer keys from the CWT Claims registry.  The token
-   is protected as a COSE_Sign1 structure [RFC9052] using an algorithm
-   from [RFC9053].  When fully tagged, the Emblem nests the CWT CBOR tag
-   (61) around the COSE_Sign1 CBOR tag (18).
+   An Emblem is a COSE_Sign1 structure (Section 4.2 of [RFC9052]) shaped
+   as a hash envelope [I-D.ietf-cose-hash-envelope].  Its payload is the
+   hash of the Resource; it is not an inlined claim set.  When tagged,
+   the Emblem is a COSE_Sign1 (CBOR tag 18).  The Emblem's media type is
+   application/digital-emblem+cose.
 
-   The following claims are used:
+   The protected header carries:
 
-      +==========================+=======+=====+===================+
-      | Emblem concept           | Claim | Key | Notes             |
-      +==========================+=======+=====+===================+
-      | Protecting/issuing party | iss   |  1  | Identifier of the |
-      |                          |       |     | Emblem Issuer     |
-      +--------------------------+-------+-----+-------------------+
-      | Protected Asset          | sub   |  2  | The Asset FQDN    |
-      |                          |       |     | (see below)       |
-      +--------------------------+-------+-----+-------------------+
-      | Intended scope           | aud   |  3  | Optional          |
-      +--------------------------+-------+-----+-------------------+
-      | Not before               | nbf   |  5  | Start of validity |
-      |                          |       |     | window            |
-      +--------------------------+-------+-----+-------------------+
-      | Expiration               | exp   |  4  | End of validity   |
-      |                          |       |     | window            |
-      +--------------------------+-------+-----+-------------------+
-      | Issued at                | iat   |  6  | Issuance time     |
-      +--------------------------+-------+-----+-------------------+
-      | Emblem identifier        | cti   |  7  | Byte string,      |
-      |                          |       |     | unique per Emblem |
-      +--------------------------+-------+-----+-------------------+
+          +==============+=======+==============================+
+          | Field        | Label | Value in the demonstration   |
+          +==============+=======+==============================+
+          | alg          |   1   | ES256 (-7), from [RFC9053]   |
+          +--------------+-------+------------------------------+
+          | kid          |   4   | Issuer key identifier        |
+          +--------------+-------+------------------------------+
+          | CWT Claims   |   15  | Minimal CWT claim set; see   |
+          |              |       | below ([RFC9597])            |
+          +--------------+-------+------------------------------+
+          | payload hash |  258  | SHA-256 (-16), from          |
+          | alg          |       | [RFC9054]                    |
+          +--------------+-------+------------------------------+
+          | preimage     |  259  | Content type of the Resource |
+          | content type |       | (e.g. application/json)      |
+          +--------------+-------+------------------------------+
+          | payload      |  260  | Retrieval location (URI) of  |
+          | location     |       | the Resource                 |
+          +--------------+-------+------------------------------+
 
-                  Table 1: CWT claims used by the Emblem
+                Table 1: Emblem protected-header parameters
 
-   The sub (2) claim MUST contain the FQDN of the marked Asset.  This
-   binds the Emblem to a specific Asset and is the basis for the check
-   in Section 7.
+   The payload is the hash of the Resource, computed with the algorithm
+   named in label 258.  Labels 258, 259, and 260 are defined by
+   [I-D.ietf-cose-hash-envelope].
 
-   The signing key is identified by the COSE kid (label 4) header
-   parameter in the protected header.  To allow a Validator to route or
-   filter Emblems before parsing the payload, an implementation MAY
-   additionally surface selected claims in the COSE header parameters as
-   described in [RFC9597].
+4.1.  CWT claims in the protected header
 
-   Additional protection semantics (for example, the kind of protection,
-   a jurisdiction, or a revocation pointer) MAY be carried as further
-   CWT claims.  Interoperable semantics for such claims are out of scope
-   for this demonstration and would be defined by the working group.
+   Rather than an inlined CWT payload, the Emblem carries CWT claims in
+   the COSE protected header using the CWT Claims header parameter
+   (label 15) of [RFC9597].  The claim set is kept minimal:
 
-5.  Delivering Emblems over DNS with SVCB
+            +=======+=====+===================================+
+            | Claim | Key | Purpose                           |
+            +=======+=====+===================================+
+            | sub   |  2  | Identifies the protected Resource |
+            +-------+-----+-----------------------------------+
+            | cnf   |  8  | Confirmation key for proof of     |
+            |       |     | possession ([RFC8747])            |
+            +-------+-----+-----------------------------------+
 
-   The Emblem is delivered over DNS using a Service Binding (SVCB)
-   resource record [RFC9460].  The record is published at a name derived
-   from the Asset FQDN; the demonstration uses the owner name
-   emblem.<fqdn>.
+            Table 2: CWT claims carried in the protected header
+
+   The cnf (8) claim contains a COSE_Key (confirmation method key 1)
+   holding the Holder's public key.  This binds the Emblem to a key the
+   Holder can later prove possession of (Section 10), independently of
+   the Issuer's signing key.  Additional protection semantics (kind of
+   protection, jurisdiction, revocation pointer) MAY be expressed as
+   further claims or within the Resource; interoperable semantics are
+   out of scope for this demonstration.
+
+4.2.  The Resource
+
+   The Resource is the content the Emblem attests.  In the demonstration
+   it is an application/json document (GeoJSON) that describes a
+   landmark and marks it protected; using a widely understood media type
+   lets structured, extensible detail live in the Resource while the
+   Emblem stays small and generic.  The Emblem binds the Resource by
+   hash, so the Resource MAY be served from any location, cached, or
+   mirrored: its integrity does not depend on the transport used to
+   fetch it, only on matching the signed hash.
+
+5.  Delivering the Entire Emblem over DNS
+
+   The complete Emblem, the COSE signature, the signed metadata, the CWT
+   claims, and the cnf key, is delivered in the DNS answer.  Nothing
+   needed to decide "is this Asset protected, by whom, and bound to
+   which key" is fetched from a separate service.
+
+   This is a deliberate and load-bearing property:
+
+   *  *Verifiable from the resolver path alone.* A Validator that can
+      resolve DNS for the name, but has no other connectivity, can still
+      obtain the Emblem, verify the Issuer's signature, and read the
+      protected metadata.  This matches the requirement that validation
+      not assume general Internet access ([I-D.ietf-diem-requirements]).
+
+   *  *No second, revealing fetch for the protection decision.* If the
+      Emblem were merely a pointer to be dereferenced (for example, a
+      URL to download the token), then discovering protection status
+      would require contacting that endpoint, an act that is observable
+      to whoever operates it and that couples availability of the
+      protection signal to availability of a separate service.  Keeping
+      the whole Emblem in DNS means the protection decision needs only
+      the generic DNS query of Section 6.
+
+   *  *Resource retrieval is optional and separable.* The Emblem attests
+      the Resource by hash.  A Validator MAY fetch the Resource to
+      obtain its full content and confirm the hash, but this is an
+      additional step, distinct from the protection decision, and is
+      subject to its own observability considerations (Section 12).
+      Because the hash is signed and delivered in DNS, the Resource can
+      be retrieved later, from a cache, or never.
+
+6.  Generic Discovery and Unobservability
+
+   A digital emblem declares a protected status.  In the DIEM threat
+   model, the act of _checking_ for that status can itself be sensitive:
+   an adversary performing target reconnaissance, or an infrastructure
+   provider observing queries, should not be able to tell that a party
+   is enumerating or probing for protected assets.
+   [I-D.ietf-diem-requirements] captures this as an Undetectable
+   Validation property.
+
+   Two common designs defeat this property:
+
+   *  A *dedicated owner name* (for example emblem.<fqdn>) makes the
+      lookup self-identifying.  Any query for that name means "someone
+      is looking for an emblem."  The authoritative server necessarily
+      sees the queried name, and so learns that emblems are being sought
+      for that zone, and for which names.
+
+   *  A *dedicated resource record type* for emblems is likewise self-
+      identifying: the query type alone reveals the intent, even when
+      the owner name is generic.
+
+   This architecture instead carries the Emblem in the record an
+   ordinary client already fetches during normal connection setup: the
+   *HTTPS resource record* (RRTYPE 65) [RFC9460] at the Asset's own
+   name, in a private-use SvcParamKey (see Section 7).  Consequently:
+
+   *  *The query is generic.* To discover an Emblem, a Validator issues
+      exactly the HTTPS query for <fqdn> that a browser or operating
+      system issues to connect to the Asset.  The authoritative operator
+      cannot distinguish a protection check from an ordinary client
+      preparing to connect; there is no emblem-specific name or type
+      whose appearance would betray the intent.
+
+   *  *On-path observers see ordinary traffic.* When the query is
+      carried over encrypted DNS (DNS over HTTPS or DNS over TLS), an
+      on-path observer sees neither the queried name nor the type.
+      Combined with the generic query, both the on-path and the
+      authoritative vantage points observe only what they would observe
+      for any client of the service.
+
+   *  *Ordinary clients are unaffected.* The Emblem rides beside the
+      normal service parameters (such as alpn) in a private-use
+      SvcParamKey that clients which do not implement DIEM simply ignore
+      (Section 7.2).
+
+   Residual signals remain and MUST be understood by deployments that
+   rely on this property:
+
+   *  A Validator that issues the HTTPS query but never proceeds to
+      connect can, in principle, be distinguished from a genuine client
+      by the _absence_ of a subsequent connection.  Full unobservability
+      therefore requires that validation ride on, or be
+      indistinguishable from, an actual connection attempt.
+
+   *  The authoritative operator still learns that the record was
+      served, exactly as for any client; unobservability is about not
+      revealing _emblem-seeking intent_, not about hiding that the name
+      was resolved.
+
+   *  Retrieving the Resource (Section 4.2) is a separate act with its
+      own observability.  Because the protection decision is answerable
+      from the DNS-delivered Emblem alone (Section 5), a Validator that
+      must remain unobservable can decide protection status without
+      fetching the Resource.
+
+   Together, Section 5 and this section give the core property: checking
+   whether an Asset is protected requires only a query that is
+   indistinguishable from ordinary traffic, and that query returns
+   everything needed to decide.
+
+7.  Delivering Emblems in the HTTPS Resource Record
+
+   The Emblem is published in the Asset's HTTPS resource record
+   [RFC9460] at the Asset's own name (the apex or service name a client
+   would use to connect), not at a derived emblem-specific name.
 
    The record MUST be in ServiceMode (SvcPriority nonzero); AliasMode
    records ignore SvcParams and cannot carry the Emblem.  The Emblem is
    carried in a private-use SvcParamKey in the range 65280-65534
-   Section 14.3.2 of [RFC9460]; the demonstration uses key65280.
+   (Section 14.3.2 of [RFC9460]); the demonstration uses key65280,
+   alongside ordinary service parameters such as alpn.
 
-5.1.  Binary encoding
+7.1.  Binary encoding
 
    On the wire, an SvcParamValue is a length-prefixed octet string
    (Section 2.2 of [RFC9460]).  The raw COSE/CBOR bytes of the Emblem
@@ -286,82 +458,133 @@ Table of Contents
    ASCII for legibility; this is purely an authoring convenience and
    does not change the octets carried on the wire.
 
+7.2.  Graceful degradation
+
    The Emblem's SvcParamKey MUST NOT be listed in the mandatory
    SvcParamKey (Section 8 of [RFC9460]).  Listing it there would cause
    clients that do not understand the key to discard the entire record;
-   leaving it out allows records to degrade gracefully for non-DIEM
-   consumers.
+   leaving it out lets the record serve its ordinary connection-setup
+   purpose for every client while remaining a generic query for
+   Validators.  This graceful degradation is what makes the generic-
+   query property of Section 6 practical on production names.
 
-5.2.  Size and transport
+7.3.  Size and transport
 
-   A signed Emblem will routinely exceed the classic 512-octet DNS
-   message limit.  Deployments MUST support EDNS(0) [RFC6891] to
-   advertise a larger reassembly buffer (a starting value of 4096 octets
-   is RECOMMENDED), and MUST fall back to TCP when the truncation (TC)
-   bit is set.  The absolute ceiling on a single record's RDATA is 65535
-   octets, imposed by the 16-bit RDLENGTH field ([RFC1035]).
+   A signed Emblem may exceed the classic 512-octet DNS message limit.
+   Deployments MUST support EDNS(0) [RFC6891] to advertise a larger
+   reassembly buffer (a starting value of 4096 octets is RECOMMENDED),
+   and MUST fall back to TCP when the truncation (TC) bit is set.  The
+   absolute ceiling on a single record's RDATA is 65535 octets, imposed
+   by the 16-bit RDLENGTH field ([RFC1035]).  A hash envelope is compact
+   because its payload is a fixed-size digest rather than the Resource
+   itself.
 
-6.  Marking and Unmarking
+8.  Marking and Unmarking
 
-   Marking an Asset consists of publishing the SVCB record described in
-   Section 5.  Unmarking consists of removing that record so that a
-   query for emblem.<fqdn> no longer returns an Emblem.
+   Marking an Asset consists of adding the emblem SvcParamKey to the
+   Asset's HTTPS resource record as described in Section 7.  Unmarking
+   consists of removing that SvcParamKey (leaving any ordinary service
+   parameters intact) so that the generic HTTPS query no longer returns
+   an Emblem.
 
    The DIEM requirements identify a stronger "Removable" property in
    which removal leaves no evidence that an Emblem was ever applied
-   ([I-D.ietf-diem-requirements]).  Simple record deletion does not by
-   itself achieve this against an adversary with access to historical
-   DNS data (for example, passive DNS or cached zone transfers).  An
+   ([I-D.ietf-diem-requirements]).  Simple removal does not by itself
+   achieve this against an adversary with access to historical DNS data
+   (for example, passive DNS or cached zone transfers).  An
    implementation that requires the Removable property MUST specify a
    threat model and address such historical observability; the
    demonstration does not claim this property.
 
-7.  Validation
+9.  Validation
 
    A Validator processes an FQDN as follows:
 
-   1.  Query DNS for an SVCB record at emblem.<fqdn>, using EDNS(0) and
-       TCP fallback as described in Section 5.2.
+   1.  Issue an ordinary HTTPS (RRTYPE 65) query for <fqdn>, using
+       EDNS(0) and TCP fallback as described in Section 7.3, preferably
+       over encrypted DNS (Section 6).
 
-   2.  Extract the Emblem octets from the private-use SvcParamKey.
+   2.  Extract the Emblem octets from the private-use SvcParamKey.  If
+       none is present, the Asset is not marked.
 
    3.  Parse the COSE_Sign1 and verify the signature using a key
        identified by the kid header and obtained from a trust anchor
        established out of band.
 
-   4.  Confirm that the sub (2) claim equals the queried FQDN.  If it
-       does not, the Emblem MUST be rejected for that Asset.
+   4.  Read the protected metadata: the hash algorithm (258), the
+       Resource content type (259) and location (260), the CWT claims
+       (15), and the cnf key.
 
-   5.  Check the validity window using nbf (5) and exp (4) against the
-       current time.
+   Steps 1-4 decide protection status from the DNS answer alone.  A
+   Validator MAY additionally:
 
-   Step 4 satisfies the requirement that validation, when defined,
-   ensures the Emblem was issued for the respective Asset.  A deployment
-   MAY choose to treat an Emblem as unverified (skipping step 3) where
-   its use case permits, as allowed by [I-D.ietf-diem-requirements].
+   1.  Retrieve the Resource from its location (260), compute its hash
+       with the algorithm from 258, and confirm it equals the signed
+       payload.  A mismatch means the Resource has changed relative to
+       what was attested.
 
-8.  Relationship to DIEM Requirements
+   2.  Challenge the Holder to prove possession of the cnf key
+       (Section 10).
+
+   A deployment MAY treat an Emblem as unverified (skipping step 3)
+   where its use case permits, as allowed by
+   [I-D.ietf-diem-requirements].  Note that this architecture does not
+   bind the Emblem to the queried FQDN by a sub-equals-FQDN check; the
+   binding to the Asset is the emblem's _presence in that Asset's own
+   HTTPS record_, and the sub claim identifies the protected Resource.
+
+10.  Proof of Possession
+
+   The cnf (8) claim confirms a Holder key ([RFC8747]).  A Validator
+   that needs assurance that the presenter is the intended Holder, and
+   not merely a party that copied a bearer Emblem, MAY challenge the
+   Holder:
+
+   1.  The Validator sends a fresh, unpredictable challenge (nonce).
+
+   2.  The Holder signs the challenge with the private key corresponding
+       to the cnf COSE_Key, producing a COSE_Sign1 over the challenge.
+
+   3.  The Validator verifies that proof against the cnf public key from
+       the Emblem, and checks that the signed challenge matches the one
+       it issued.
+
+   This detects replay of a copied Emblem by a party that does not hold
+   the confirmed key, and anchors any future "presentation" protocol the
+   working group may define.  The demonstration implements and tests
+   this exchange.
+
+11.  Relationship to DIEM Requirements
 
    This architecture is intended to exercise the following requirements
    from [I-D.ietf-diem-requirements]:
 
-   *  Format: the Emblem identifies the marked Asset by FQDN (sub) and
-      is a self-describing CWT of minimal size overhead.
+   *  Format: the Emblem is a compact, self-describing COSE hash
+      envelope that attests a Resource and carries a confirmation key.
 
    *  Discovery: a Validator determines whether an Asset bears an Emblem
-      by querying a well-known SVCB owner name.
+      by issuing the ordinary HTTPS query it would use to connect.
 
-   *  Validation: the signature check plus the sub-equals-FQDN check
-      ensure the Emblem was issued for the Asset.
+   *  Validation: the COSE signature check establishes issuer
+      authenticity; the optional Resource re-hash confirms the attested
+      content; the optional proof-of-possession exchange confirms the
+      Holder.
+
+   *  Undetectable Validation: because discovery uses a generic query
+      that returns the entire Emblem (Section 5, Section 6), a
+      protection check is not distinguishable, at the authoritative
+      server or on-path, from ordinary client traffic, subject to the
+      residual signals noted in Section 6.
 
    *  Authorization: the trust model relies on out-of-band trust anchors
       and does not assume general Internet access; key compromise is
-      addressed by short validity windows and re-issuance.
+      addressed by re-issuance and, for presentation, by the cnf
+      binding.
 
-   The Removable and Undetectable Validation properties are explicitly
-   not provided by this demonstration.
+   The Removable property is explicitly not fully provided by this
+   demonstration.
 
-9.  Security Considerations
+12.  Security Considerations
 
    The integrity and authenticity of an Emblem derive entirely from the
    COSE signature; DNS is used only as a delivery channel and is not
@@ -370,26 +593,54 @@ Table of Contents
    NOT rely on DNSSEC in place of verifying the COSE signature.
 
    Because the Emblem is a bearer object, any party that can retrieve it
-   can present it.  Binding the Emblem to the Asset via the sub claim
-   prevents an Emblem issued for one FQDN from being accepted for
-   another, but it does not prevent replay of an Emblem for the FQDN it
-   names.  Short validity windows (nbf/exp) and re-issuance limit the
-   impact of key compromise; a deployment that needs stronger guarantees
-   requires a revocation mechanism, which is out of scope for this
-   demonstration.
+   can present it.  The cnf claim (Section 10) lets a Validator require
+   the presenter to prove possession of a confirmed key, which detects
+   presentation by a party that merely copied the Emblem; it does not by
+   itself prevent an on-path party from observing a served Emblem.  A
+   deployment that needs revocation requires a mechanism out of scope
+   for this demonstration; re-issuance limits exposure.
 
-   Unmarking by record deletion does not erase historical observations
-   of a published Emblem; see Section 6.
+   The unobservability of validation (Section 6) depends on the query
+   being generic _and_ on the Validator not producing a distinguishing
+   follow-on behavior (such as querying but never connecting), and on
+   carrying the query over encrypted DNS to hide it from on-path
+   observers.  Fetching the Resource (Section 4.2) is a separate,
+   potentially observable act at the Resource's host; deployments that
+   must not reveal emblem-seeking intent SHOULD decide protection status
+   from the DNS-delivered Emblem alone and treat Resource retrieval as
+   an independent decision.
 
-10.  IANA Considerations
+   Unmarking by removal does not erase historical observations of a
+   published Emblem; see Section 8.
 
-   This document has no IANA actions.  The demonstration uses a private-
-   use SvcParamKey (Section 14.3.2 of [RFC9460]), which does not require
-   registration.
+13.  IANA Considerations
 
-11.  References
+   This document has no IANA actions.
 
-11.1.  Normative References
+   The demonstration uses a private-use SvcParamKey (Section 14.3.2 of
+   [RFC9460]), which does not require registration.  A standards-track
+   successor that carried emblems in the HTTPS/SVCB record would instead
+   register a dedicated SvcParamKey.
+
+   The demonstration labels the Emblem with the media type application/
+   digital-emblem+cose.  A standards-track successor would register this
+   media type; this document does not request that registration.
+
+   The protected-header parameters used by the hash envelope (labels
+   258, 259, and 260) and the CWT Claims header parameter (label 15) are
+   registered by [I-D.ietf-cose-hash-envelope] and [RFC9597]
+   respectively.
+
+14.  References
+
+14.1.  Normative References
+
+   [I-D.ietf-cose-hash-envelope]
+              Steele, O., Lasker, S., and H. Birkholz, "COSE Hash
+              Envelope", Work in Progress, Internet-Draft, draft-ietf-
+              cose-hash-envelope-10, 15 November 2025,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-cose-
+              hash-envelope-10>.
 
    [RFC1035]  Mockapetris, P., "Domain names - implementation and
               specification", STD 13, RFC 1035, DOI 10.17487/RFC1035,
@@ -409,14 +660,10 @@ Table of Contents
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
 
-   [RFC8392]  Jones, M., Wahlstroem, E., Erdtman, S., and H. Tschofenig,
-              "CBOR Web Token (CWT)", RFC 8392, DOI 10.17487/RFC8392,
-              May 2018, <https://www.rfc-editor.org/rfc/rfc8392>.
-
-   [RFC8949]  Bormann, C. and P. Hoffman, "Concise Binary Object
-              Representation (CBOR)", STD 94, RFC 8949,
-              DOI 10.17487/RFC8949, December 2020,
-              <https://www.rfc-editor.org/rfc/rfc8949>.
+   [RFC8747]  Jones, M., Seitz, L., Selander, G., Erdtman, S., and H.
+              Tschofenig, "Proof-of-Possession Key Semantics for CBOR
+              Web Tokens (CWTs)", RFC 8747, DOI 10.17487/RFC8747, March
+              2020, <https://www.rfc-editor.org/rfc/rfc8747>.
 
    [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
               Structures and Process", STD 96, RFC 9052,
@@ -427,12 +674,20 @@ Table of Contents
               Initial Algorithms", RFC 9053, DOI 10.17487/RFC9053,
               August 2022, <https://www.rfc-editor.org/rfc/rfc9053>.
 
+   [RFC9054]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
+              Hash Algorithms", RFC 9054, DOI 10.17487/RFC9054, August
+              2022, <https://www.rfc-editor.org/rfc/rfc9054>.
+
    [RFC9460]  Schwartz, B., Bishop, M., and E. Nygren, "Service Binding
               and Parameter Specification via the DNS (SVCB and HTTPS
               Resource Records)", RFC 9460, DOI 10.17487/RFC9460,
               November 2023, <https://www.rfc-editor.org/rfc/rfc9460>.
 
-11.2.  Informative References
+   [RFC9597]  Looker, T. and M.B. Jones, "CBOR Web Token (CWT) Claims in
+              COSE Headers", RFC 9597, DOI 10.17487/RFC9597, June 2024,
+              <https://www.rfc-editor.org/rfc/rfc9597>.
+
+14.2.  Informative References
 
    [I-D.ietf-diem-requirements]
               Fainchtein, R. A., Linker, F., Rosenberg, A., Deccio, C.,
@@ -442,14 +697,11 @@ Table of Contents
               <https://datatracker.ietf.org/doc/html/draft-ietf-diem-
               requirements-03>.
 
-   [RFC9597]  Looker, T. and M.B. Jones, "CBOR Web Token (CWT) Claims in
-              COSE Headers", RFC 9597, DOI 10.17487/RFC9597, June 2024,
-              <https://www.rfc-editor.org/rfc/rfc9597>.
-
 Acknowledgments
 
    This work builds on the DIEM working group's use cases and
-   requirements and on prior experiments in transparent digital emblems.
+   requirements, on COSE hash envelopes, and on prior experiments in
+   transparent digital emblems.
 
 Author's Address
 
