@@ -1,0 +1,271 @@
+{
+  "magic": "E!vIA5L86J2I",
+  "timestamp": "2026-07-09T00:38:08.051062+00:00",
+  "repo": "OR13/emblem.red",
+  "labels": [
+    {
+      "name": "bug",
+      "description": "Something isn't working",
+      "color": "d73a4a"
+    },
+    {
+      "name": "documentation",
+      "description": "Improvements or additions to documentation",
+      "color": "0075ca"
+    },
+    {
+      "name": "duplicate",
+      "description": "This issue or pull request already exists",
+      "color": "cfd3d7"
+    },
+    {
+      "name": "enhancement",
+      "description": "New feature or request",
+      "color": "a2eeef"
+    },
+    {
+      "name": "good first issue",
+      "description": "Good for newcomers",
+      "color": "7057ff"
+    },
+    {
+      "name": "help wanted",
+      "description": "Extra attention is needed",
+      "color": "008672"
+    },
+    {
+      "name": "invalid",
+      "description": "This doesn't seem right",
+      "color": "e4e669"
+    },
+    {
+      "name": "question",
+      "description": "Further information is requested",
+      "color": "d876e3"
+    },
+    {
+      "name": "wontfix",
+      "description": "This will not be worked on",
+      "color": "ffffff"
+    }
+  ],
+  "issues": [],
+  "pulls": [
+    {
+      "number": 1,
+      "id": "PR_kwDOMcQi-87up47p",
+      "title": "emblem-verify-https-channel",
+      "url": "https://github.com/OR13/emblem.red/pull/1",
+      "state": "MERGED",
+      "author": "OR13",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Why: make the demo show how a domain is checked for a digital emblem, and do it so verification is indistinguishable from ordinary client traffic.\n\n## Emblem delivery \u2014 HTTPS record only\n- Emblems are carried in the asset's **own HTTPS record** (`key65280`), the record clients already fetch at connection setup. Verifying issues the same query an ordinary client does, so the zone operator can't tell a protection check from a normal visit.\n- **Removed** the dedicated `emblem.<fqdn>` SVCB name \u2014 its lookup would reveal interest in the emblem.\n- Discovery over **RFC 8484 DoH wireformat** with EDNS padding (JSON fallback), so on-path observers see only ordinary encrypted DNS.\n\n## Verify UI\n- `/verify` and `/verify/<fqdn>`: live scan + COSE verification (signature, subject binding, validity window).\n- Full CWT rendered as **annotated CBOR commented-hex** (`lib/cbor-hex.ts`), every octet on the wire.\n- Query-privacy note explaining the indistinguishability property.\n\n## Redesign\n- Adopted the shadcn preset: base-sera, red primary, taupe, Nunito Sans + Geist Mono, phosphor icons, light/dark via next-themes.\n- Rebuilt homepage: hero, \"how an emblem travels\", the Issue/Mark/Verify/Unmark instrument, IETF DIEM resource footer (WG, charter, datatracker, ietf-wg-diem).\n- Hero uses the ported animated xterm terminal (display-only) showing protected vs not-protected.\n- No protected emblems (Red Cross/Crescent/Crystal) used as decoration \u2014 text reference only.\n\n## Verification\n- `tsc`, ESLint, and `next build` all clean.\n- Exercised live against Cloudflare DNS: `emblem.red` marked via its apex HTTPS record, discovered + verified end-to-end.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+      "createdAt": "2026-07-07T04:29:32Z",
+      "updatedAt": "2026-07-07T04:32:45Z",
+      "baseRepository": "OR13/emblem.red",
+      "baseRefName": "main",
+      "baseRefOid": "088e02edf1abb6b892920a48220f2842284e7881",
+      "headRepository": "OR13/emblem.red",
+      "headRefName": "emblem-verify-https-channel",
+      "headRefOid": "05b85bd3cc59e6322a8140f9c3ff188a26f8c164",
+      "closedAt": "2026-07-07T04:32:43Z",
+      "mergedAt": "2026-07-07T04:32:43Z",
+      "mergedBy": "OR13",
+      "mergeCommit": {
+        "oid": "c897505e4f03a3ed2c5344dc8027b72bf07f0f5b"
+      },
+      "comments": [
+        {
+          "author": "vercel",
+          "authorAssociation": "NONE",
+          "body": "[vc]: #BGcMmxtYfXEBus5cRuUlmISVVImvS28nRCOs3Czd8cI=:eyJpc01vbm9yZXBvIjp0cnVlLCJ0eXBlIjoiZ2l0aHViIiwicHJvamVjdHMiOlt7Im5hbWUiOiJlbWJsZW0tcmVkIiwicHJvamVjdElkIjoicHJqX0xoZjE1RUd0WGFGMVhkdGR3NnFuSVptT1pzVFEiLCJsaXZlRmVlZGJhY2siOnsicmVzb2x2ZWQiOjAsInVucmVzb2x2ZWQiOjAsInRvdGFsIjowLCJsaW5rIjoiIn0sImluc3BlY3RvclVybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS9vcjEzL2VtYmxlbS1yZWQvNTQ4WVBGWWV0RnNzdVlvUE5nemUxQUJKNUY3WCIsInByZXZpZXdVcmwiOiIiLCJuZXh0Q29tbWl0U3RhdHVzIjoiRkFJTEVEIiwicm9vdERpcmVjdG9yeSI6bnVsbH1dLCJyZXF1ZXN0UmV2aWV3VXJsIjoiaHR0cHM6Ly92ZXJjZWwuY29tL3ZlcmNlbC1hZ2VudC9yZXF1ZXN0LXJldmlldz9vd25lcj1PUjEzJnJlcG89ZW1ibGVtLnJlZCZwcj0xIn0=\nThe latest updates on your projects. Learn more about [Vercel for GitHub](https://vercel.link/github-learn-more).\n\n| Project | Deployment | Actions | Updated (UTC) |\n| :--- | :----- | :------ | :------ |\n| [emblem-red](https://vercel.com/or13/emblem-red) | ![Error](https://vercel.com/static/status/error.svg) [Error](https://vercel.com/or13/emblem-red/548YPFYetFssuYoPNgze1ABJ5F7X) |  | Jul 7, 2026 4:32am |\n\n<a href=\"https://vercel.com/vercel-agent/request-review?owner=OR13&repo=emblem.red&pr=1\" rel=\"noreferrer\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-light.svg\"><img src=\"https://agents-vade-review.vercel.sh/request-review-light.svg\" alt=\"Request Review\"></picture></a>\n\n",
+          "createdAt": "2026-07-07T04:29:38Z",
+          "updatedAt": "2026-07-07T04:32:19Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 2,
+      "id": "PR_kwDOMcQi-87uqG8z",
+      "title": "fix-hero-terminal",
+      "url": "https://github.com/OR13/emblem.red/pull/2",
+      "state": "MERGED",
+      "author": "OR13",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Why: the xterm-based hero terminal captured page scroll (scrollbar jumping) and rendered unreliably in the browser.\n\n- Replaces it with a dependency-free, pure-DOM animated terminal.\n- Fixed height + `overflow: hidden` + `pointer-events: none` + `overflow-anchor: none` \u2192 it cannot reflow the page or trap wheel/scroll.\n- Same look: theme-aware verify transcript showing PROTECTED vs NOT PROTECTED, typed animation, blinking cursor, reduced-motion fallback.\n- Removes `@xterm/xterm` and `@xterm/addon-fit`.\n\nVerified `tsc`, ESLint, and `next build` clean; checked light + dark.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+      "createdAt": "2026-07-07T04:44:05Z",
+      "updatedAt": "2026-07-07T04:45:18Z",
+      "baseRepository": "OR13/emblem.red",
+      "baseRefName": "main",
+      "baseRefOid": "c897505e4f03a3ed2c5344dc8027b72bf07f0f5b",
+      "headRepository": "OR13/emblem.red",
+      "headRefName": "fix-hero-terminal",
+      "headRefOid": "5b37abeab7fce7fac1692646b04fca837a8ffed1",
+      "closedAt": "2026-07-07T04:45:16Z",
+      "mergedAt": "2026-07-07T04:45:16Z",
+      "mergedBy": "OR13",
+      "mergeCommit": {
+        "oid": "d53f5987b97c415afa315b3778a7a56c476e13b3"
+      },
+      "comments": [
+        {
+          "author": "vercel",
+          "authorAssociation": "NONE",
+          "body": "[vc]: #tLFqodWuDqBRlPbSL3+4hybub1v5liJTIk2LBpjCETE=:eyJpc01vbm9yZXBvIjp0cnVlLCJ0eXBlIjoiZ2l0aHViIiwicHJvamVjdHMiOlt7Im5hbWUiOiJlbWJsZW0tcmVkIiwicHJvamVjdElkIjoicHJqX0xoZjE1RUd0WGFGMVhkdGR3NnFuSVptT1pzVFEiLCJ2MCI6ZmFsc2UsImxpdmVGZWVkYmFjayI6eyJyZXNvbHZlZCI6MCwidW5yZXNvbHZlZCI6MCwidG90YWwiOjAsImxpbmsiOiIifSwiaW5zcGVjdG9yVXJsIjoiaHR0cHM6Ly92ZXJjZWwuY29tL29yMTMvZW1ibGVtLXJlZC9DQ3F4SmFFRHFQcXhGRDRpbWY2Nm9VQ2paRE5jIiwicHJldmlld1VybCI6IiIsIm5leHRDb21taXRTdGF0dXMiOiJGQUlMRUQifV0sInJlcXVlc3RSZXZpZXdVcmwiOiJodHRwczovL3ZlcmNlbC5jb20vdmVyY2VsLWFnZW50L3JlcXVlc3QtcmV2aWV3P293bmVyPU9SMTMmcmVwbz1lbWJsZW0ucmVkJnByPTIifQ==\nThe latest updates on your projects. Learn more about [Vercel for GitHub](https://vercel.link/github-learn-more).\n\n| Project | Deployment | Actions | Updated (UTC) |\n| :--- | :----- | :------ | :------ |\n| [emblem-red](https://vercel.com/or13/emblem-red) | ![Error](https://vercel.com/static/status/error.svg) [Error](https://vercel.com/or13/emblem-red/CCqxJaEDqPqxFD4imf66oUCjZDNc) |  | Jul 7, 2026 4:44am |\n\n<a href=\"https://vercel.com/vercel-agent/request-review?owner=OR13&repo=emblem.red&pr=2\" rel=\"noreferrer\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-light.svg\"><img src=\"https://agents-vade-review.vercel.sh/request-review-light.svg\" alt=\"Request Review\"></picture></a>\n\n",
+          "createdAt": "2026-07-07T04:44:11Z",
+          "updatedAt": "2026-07-07T04:44:11Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 3,
+      "id": "PR_kwDOMcQi-87urKgn",
+      "title": "cose-hash-envelope",
+      "url": "https://github.com/OR13/emblem.red/pull/3",
+      "state": "MERGED",
+      "author": "OR13",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Why: attest an external resource with a COSE hash envelope and support future proof of possession.\n\n- **Hash envelope** (draft-ietf-cose-hash-envelope): payload = SHA-256 of the resource; protected header `258` payload-hash-alg (\u221216), `259` preimage-content-type, `260` payload-location.\n- **CWT claims in the protected header** (RFC 9597, label 15), minimal: `sub` + **`cnf`** (RFC 8747) \u2192 `COSE_Key` (EC2 P-256) for holder proof-of-possession.\n- **New media type** `application/digital-emblem+cose`; served by `GET /api/emblem`.\n- **Example resource**: GeoJSON for St. Stephen's Cathedral, Vienna (`/landmarks/stephansdom.json`, application/json), marked protected.\n- Verify re-fetches the resource and confirms SHA-256 matches the signed payload.\n- Decoded-CBOR view annotates the new labels; homepage terminal + \"worked example\" demonstrate it.\n\nVerified end-to-end over live DNS (local): PROTECTED, signature + resource-hash both green. `tsc`/lint/build clean.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+      "createdAt": "2026-07-07T05:48:28Z",
+      "updatedAt": "2026-07-07T05:54:34Z",
+      "baseRepository": "OR13/emblem.red",
+      "baseRefName": "main",
+      "baseRefOid": "d53f5987b97c415afa315b3778a7a56c476e13b3",
+      "headRepository": "OR13/emblem.red",
+      "headRefName": "cose-hash-envelope",
+      "headRefOid": "11b681611db7f98598736c4d15cf91b73f562e18",
+      "closedAt": "2026-07-07T05:54:32Z",
+      "mergedAt": "2026-07-07T05:54:32Z",
+      "mergedBy": "OR13",
+      "mergeCommit": {
+        "oid": "a0c1763940e78fd27cd851e750950e9bac84b10e"
+      },
+      "comments": [
+        {
+          "author": "vercel",
+          "authorAssociation": "NONE",
+          "body": "[vc]: #WW3fuMMY5I5lgrP3QpO07sY3I8vr5pmNAGBlnRUaWBU=:eyJpc01vbm9yZXBvIjp0cnVlLCJ0eXBlIjoiZ2l0aHViIiwicHJvamVjdHMiOlt7Im5hbWUiOiJlbWJsZW0tcmVkIiwicHJvamVjdElkIjoicHJqX0xoZjE1RUd0WGFGMVhkdGR3NnFuSVptT1pzVFEiLCJpbnNwZWN0b3JVcmwiOiJodHRwczovL3ZlcmNlbC5jb20vb3IxMy9lbWJsZW0tcmVkLzl3NHROd2ZLN2JwU3lGQ3dCOFkxU1ZaWWI0akMiLCJwcmV2aWV3VXJsIjoiIiwibmV4dENvbW1pdFN0YXR1cyI6IkZBSUxFRCIsImxpdmVGZWVkYmFjayI6eyJyZXNvbHZlZCI6MCwidW5yZXNvbHZlZCI6MCwidG90YWwiOjAsImxpbmsiOiIifSwidjAiOmZhbHNlfV0sInJlcXVlc3RSZXZpZXdVcmwiOiJodHRwczovL3ZlcmNlbC5jb20vdmVyY2VsLWFnZW50L3JlcXVlc3QtcmV2aWV3P293bmVyPU9SMTMmcmVwbz1lbWJsZW0ucmVkJnByPTMifQ==\nThe latest updates on your projects. Learn more about [Vercel for GitHub](https://vercel.link/github-learn-more).\n\n| Project | Deployment | Actions | Updated (UTC) |\n| :--- | :----- | :------ | :------ |\n| [emblem-red](https://vercel.com/or13/emblem-red) | ![Error](https://vercel.com/static/status/error.svg) [Error](https://vercel.com/or13/emblem-red/9w4tNwfK7bpSyFCwB8Y1SVZYb4jC) |  | Jul 7, 2026 5:48am |\n\n<a href=\"https://vercel.com/vercel-agent/request-review?owner=OR13&repo=emblem.red&pr=3\" rel=\"noreferrer\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-light.svg\"><img src=\"https://agents-vade-review.vercel.sh/request-review-light.svg\" alt=\"Request Review\"></picture></a>\n\n",
+          "createdAt": "2026-07-07T05:48:30Z",
+          "updatedAt": "2026-07-07T05:48:36Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 4,
+      "id": "PR_kwDOMcQi-87u9Niq",
+      "title": "resource-viz-pop-tests",
+      "url": "https://github.com/OR13/emblem.red/pull/4",
+      "state": "MERGED",
+      "author": "OR13",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Why: show the resource being retrieved, visualize what's marked, and test the sign/verify/present paths.\n\n- **Terminal retrieves the resource** \u2014 client-side fetches `/landmarks/stephansdom.json` and shows the live fields (name, coords, protected).\n- **Resource visualization** \u2014 verify page renders a `ResourceCard`: map marker, PROTECTED badge, coordinates, landmark name (parsed from the GeoJSON).\n- **Proof of possession** \u2014 `createPossessionProof` / `verifyPossessionProof`: the holder signs a challenge with the `cnf` key; verified against the emblem's `cnf` public key.\n- **Tests** (`npm test`, node:test + tsx): 9 passing \u2014 issue+verify, hash binding, tamper detection, wrong-key rejection, resource-modification detection, and PoP present (valid / wrong key / challenge mismatch).\n\n`tsc`, ESLint, tests, and `next build` all green.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+      "createdAt": "2026-07-07T18:24:07Z",
+      "updatedAt": "2026-07-07T19:34:41Z",
+      "baseRepository": "OR13/emblem.red",
+      "baseRefName": "main",
+      "baseRefOid": "a0c1763940e78fd27cd851e750950e9bac84b10e",
+      "headRepository": "OR13/emblem.red",
+      "headRefName": "resource-viz-pop-tests",
+      "headRefOid": "f0807fa842847a81ee431f5d91390e285047d1f4",
+      "closedAt": "2026-07-07T19:34:39Z",
+      "mergedAt": "2026-07-07T19:34:39Z",
+      "mergedBy": "OR13",
+      "mergeCommit": {
+        "oid": "e012cd8e5f9e925bed0f8954e162a04981120d34"
+      },
+      "comments": [
+        {
+          "author": "vercel",
+          "authorAssociation": "NONE",
+          "body": "[vc]: #IoFN6lkacT6VcVU5wwMPInYsqzwe0GOCGW28Ypsgt8g=:eyJpc01vbm9yZXBvIjp0cnVlLCJ0eXBlIjoiZ2l0aHViIiwicHJvamVjdHMiOlt7Im5hbWUiOiJlbWJsZW0tcmVkIiwicHJvamVjdElkIjoicHJqX0xoZjE1RUd0WGFGMVhkdGR3NnFuSVptT1pzVFEiLCJ2MCI6ZmFsc2UsImluc3BlY3RvclVybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS9vcjEzL2VtYmxlbS1yZWQvSkFKTFpaU0VEVlhqcVFBUmNiQXFvUUxDbUJCayIsInByZXZpZXdVcmwiOiJlbWJsZW0tcmVkLWdpdC1yZXNvdXJjZS12aXotcG9wLXRlc3RzLW9yMTMudmVyY2VsLmFwcCIsIm5leHRDb21taXRTdGF0dXMiOiJERVBMT1lFRCIsImxpdmVGZWVkYmFjayI6eyJyZXNvbHZlZCI6MCwidW5yZXNvbHZlZCI6MCwidG90YWwiOjAsImxpbmsiOiJlbWJsZW0tcmVkLWdpdC1yZXNvdXJjZS12aXotcG9wLXRlc3RzLW9yMTMudmVyY2VsLmFwcCJ9LCJyb290RGlyZWN0b3J5IjoiZGVtbyJ9XSwicmVxdWVzdFJldmlld1VybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS92ZXJjZWwtYWdlbnQvcmVxdWVzdC1yZXZpZXc/b3duZXI9T1IxMyZyZXBvPWVtYmxlbS5yZWQmcHI9NCJ9\nThe latest updates on your projects. Learn more about [Vercel for GitHub](https://vercel.link/github-learn-more).\n\n| Project | Deployment | Actions | Updated (UTC) |\n| :--- | :----- | :------ | :------ |\n| [emblem-red](https://vercel.com/or13/emblem-red) | ![Ready](https://vercel.com/static/status/ready.svg) [Ready](https://vercel.com/or13/emblem-red/JAJLZZSEDVXjqQARcbAqoQLCmBBk) | [Preview](https://emblem-red-git-resource-viz-pop-tests-or13.vercel.app), [Comment](https://vercel.live/open-feedback/emblem-red-git-resource-viz-pop-tests-or13.vercel.app?via=pr-comment-feedback-link) | Jul 7, 2026 6:24pm |\n\n<a href=\"https://vercel.com/vercel-agent/request-review?owner=OR13&repo=emblem.red&pr=4\" rel=\"noreferrer\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-light.svg\"><img src=\"https://agents-vade-review.vercel.sh/request-review-light.svg\" alt=\"Request Review\"></picture></a>\n\n",
+          "createdAt": "2026-07-07T18:24:11Z",
+          "updatedAt": "2026-07-07T18:24:36Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 5,
+      "id": "PR_kwDOMcQi-87u_RxY",
+      "title": "draft-hash-envelope-update",
+      "url": "https://github.com/OR13/emblem.red/pull/5",
+      "state": "MERGED",
+      "author": "OR13",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Rewrites the architecture draft to match the running demo, and makes explicit the two properties requested.\n\n- **Emblem = COSE hash envelope** (draft-ietf-cose-hash-envelope): payload = hash of an external Resource; protected header carries `258`/`259`/`260`, minimal CWT claims (RFC 9597, label 15) = `sub` + `cnf`, and a `cnf` key (RFC 8747). Media type `application/digital-emblem+cose`.\n- **Delivery** moved from a dedicated `emblem.<fqdn>` SVCB name to the asset's **own HTTPS record** (RRTYPE 65), `key65280`.\n- **\u00a7 Delivering the Entire Emblem over DNS** \u2014 the whole emblem is in the DNS answer, so the protection decision needs no second, revealing fetch.\n- **\u00a7 Generic Discovery and Unobservability** \u2014 the query that returns the emblem is the ordinary connection-setup query, so scanning for emblems does not reveal emblem-seeking intent to the infrastructure provider or an on-path observer; residual signals called out.\n- **\u00a7 Proof of Possession** \u2014 challenge/response against the `cnf` key.\n\nBuilds clean locally: kramdown-rfc + xml2rfc (txt & html), all references resolved, no line >72 cols.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+      "createdAt": "2026-07-07T20:00:12Z",
+      "updatedAt": "2026-07-07T21:34:17Z",
+      "baseRepository": "OR13/emblem.red",
+      "baseRefName": "main",
+      "baseRefOid": "e012cd8e5f9e925bed0f8954e162a04981120d34",
+      "headRepository": "OR13/emblem.red",
+      "headRefName": "draft-hash-envelope-update",
+      "headRefOid": "fccd1be03670bd9e403e04bc0b9ea9a47030a736",
+      "closedAt": "2026-07-07T21:34:15Z",
+      "mergedAt": "2026-07-07T21:34:15Z",
+      "mergedBy": "OR13",
+      "mergeCommit": {
+        "oid": "2a4c66e6371b58b8444cb427af2215fec8320f5f"
+      },
+      "comments": [
+        {
+          "author": "vercel",
+          "authorAssociation": "NONE",
+          "body": "[vc]: #G7YcppTrZeTiMVfBUKjmYZzIBnm03FfYWp3/UdEpnEY=:eyJpc01vbm9yZXBvIjp0cnVlLCJ0eXBlIjoiZ2l0aHViIiwicHJvamVjdHMiOlt7Im5hbWUiOiJlbWJsZW0tcmVkIiwicHJvamVjdElkIjoicHJqX0xoZjE1RUd0WGFGMVhkdGR3NnFuSVptT1pzVFEiLCJ2MCI6ZmFsc2UsImluc3BlY3RvclVybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS9vcjEzL2VtYmxlbS1yZWQvMjh3dkRSUjFTdU1lSHlhNW42RzRrU0c3OEFMQSIsInByZXZpZXdVcmwiOiJlbWJsZW0tcmVkLWdpdC1kcmFmdC1oYXNoLWVudmVsb3BlLXVwZGF0ZS1vcjEzLnZlcmNlbC5hcHAiLCJuZXh0Q29tbWl0U3RhdHVzIjoiREVQTE9ZRUQiLCJsaXZlRmVlZGJhY2siOnsicmVzb2x2ZWQiOjAsInVucmVzb2x2ZWQiOjAsInRvdGFsIjowLCJsaW5rIjoiZW1ibGVtLXJlZC1naXQtZHJhZnQtaGFzaC1lbnZlbG9wZS11cGRhdGUtb3IxMy52ZXJjZWwuYXBwIn0sInJvb3REaXJlY3RvcnkiOiJkZW1vIn1dLCJyZXF1ZXN0UmV2aWV3VXJsIjoiaHR0cHM6Ly92ZXJjZWwuY29tL3ZlcmNlbC1hZ2VudC9yZXF1ZXN0LXJldmlldz9vd25lcj1PUjEzJnJlcG89ZW1ibGVtLnJlZCZwcj01In0=\nThe latest updates on your projects. Learn more about [Vercel for GitHub](https://vercel.link/github-learn-more).\n\n| Project | Deployment | Actions | Updated (UTC) |\n| :--- | :----- | :------ | :------ |\n| [emblem-red](https://vercel.com/or13/emblem-red) | ![Ready](https://vercel.com/static/status/ready.svg) [Ready](https://vercel.com/or13/emblem-red/28wvDRR1SuMeHya5n6G4kSG78ALA) | [Preview](https://emblem-red-git-draft-hash-envelope-update-or13.vercel.app), [Comment](https://vercel.live/open-feedback/emblem-red-git-draft-hash-envelope-update-or13.vercel.app?via=pr-comment-feedback-link) | Jul 7, 2026 8:00pm |\n\n<a href=\"https://vercel.com/vercel-agent/request-review?owner=OR13&repo=emblem.red&pr=5\" rel=\"noreferrer\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-light.svg\"><img src=\"https://agents-vade-review.vercel.sh/request-review-light.svg\" alt=\"Request Review\"></picture></a>\n\n",
+          "createdAt": "2026-07-07T20:00:14Z",
+          "updatedAt": "2026-07-07T20:00:40Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 6,
+      "id": "PR_kwDOMcQi-87vB0ks",
+      "title": "github-contribution-links",
+      "url": "https://github.com/OR13/emblem.red/pull/6",
+      "state": "MERGED",
+      "author": "OR13",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Point the draft's `latest:` at the real editor's copy (or13.github.io), and drive contribution to GitHub for both the draft (venue.github) and the demo (header GitHub link + footer Contribute/Issues links). Same repo OR13/emblem.red holds both.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+      "createdAt": "2026-07-07T22:05:37Z",
+      "updatedAt": "2026-07-07T22:06:05Z",
+      "baseRepository": "OR13/emblem.red",
+      "baseRefName": "main",
+      "baseRefOid": "2a4c66e6371b58b8444cb427af2215fec8320f5f",
+      "headRepository": "OR13/emblem.red",
+      "headRefName": "github-contribution-links",
+      "headRefOid": "b4eb36117d0fafd35780dfaa83db9b6cae11881b",
+      "closedAt": "2026-07-07T22:05:51Z",
+      "mergedAt": "2026-07-07T22:05:51Z",
+      "mergedBy": "OR13",
+      "mergeCommit": {
+        "oid": "bd215d8c83a9d24c06d10a805e6503a1e55ca959"
+      },
+      "comments": [
+        {
+          "author": "vercel",
+          "authorAssociation": "NONE",
+          "body": "[vc]: #D5oUmkSBR4d5i9PiE8S+9XctvPOuGBHv2ffNKp1qAvM=:eyJpc01vbm9yZXBvIjp0cnVlLCJ0eXBlIjoiZ2l0aHViIiwicHJvamVjdHMiOlt7Im5hbWUiOiJlbWJsZW0tcmVkIiwicHJvamVjdElkIjoicHJqX0xoZjE1RUd0WGFGMVhkdGR3NnFuSVptT1pzVFEiLCJ2MCI6ZmFsc2UsImluc3BlY3RvclVybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS9vcjEzL2VtYmxlbS1yZWQvRnd6Q3ZvUkw5b0hZVVdrcHdSMWNpeEthR1BQQiIsInByZXZpZXdVcmwiOiJlbWJsZW0tcmVkLWdpdC1naXRodWItY29udHJpYnV0aW9uLWxpbmtzLW9yMTMudmVyY2VsLmFwcCIsIm5leHRDb21taXRTdGF0dXMiOiJERVBMT1lFRCIsImxpdmVGZWVkYmFjayI6eyJyZXNvbHZlZCI6MCwidW5yZXNvbHZlZCI6MCwidG90YWwiOjAsImxpbmsiOiJlbWJsZW0tcmVkLWdpdC1naXRodWItY29udHJpYnV0aW9uLWxpbmtzLW9yMTMudmVyY2VsLmFwcCJ9LCJyb290RGlyZWN0b3J5IjoiZGVtbyJ9XSwicmVxdWVzdFJldmlld1VybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS92ZXJjZWwtYWdlbnQvcmVxdWVzdC1yZXZpZXc/b3duZXI9T1IxMyZyZXBvPWVtYmxlbS5yZWQmcHI9NiJ9\nThe latest updates on your projects. Learn more about [Vercel for GitHub](https://vercel.link/github-learn-more).\n\n| Project | Deployment | Actions | Updated (UTC) |\n| :--- | :----- | :------ | :------ |\n| [emblem-red](https://vercel.com/or13/emblem-red) | ![Ready](https://vercel.com/static/status/ready.svg) [Ready](https://vercel.com/or13/emblem-red/FwzCvoRL9oHYUWkpwR1cixKaGPPB) | [Preview](https://emblem-red-git-github-contribution-links-or13.vercel.app), [Comment](https://vercel.live/open-feedback/emblem-red-git-github-contribution-links-or13.vercel.app?via=pr-comment-feedback-link) | Jul 7, 2026 10:06pm |\n\n<a href=\"https://vercel.com/vercel-agent/request-review?owner=OR13&repo=emblem.red&pr=6\" rel=\"noreferrer\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-light.svg\"><img src=\"https://agents-vade-review.vercel.sh/request-review-light.svg\" alt=\"Request Review\"></picture></a>\n\n",
+          "createdAt": "2026-07-07T22:05:39Z",
+          "updatedAt": "2026-07-07T22:06:05Z"
+        }
+      ],
+      "reviews": []
+    }
+  ]
+}
