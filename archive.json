@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-07-28T00:33:16.153275+00:00",
+  "timestamp": "2026-07-30T00:31:37.087643+00:00",
   "repo": "OR13/emblem.red",
   "labels": [
     {
@@ -263,6 +263,42 @@
           "body": "[vc]: #D5oUmkSBR4d5i9PiE8S+9XctvPOuGBHv2ffNKp1qAvM=:eyJpc01vbm9yZXBvIjp0cnVlLCJ0eXBlIjoiZ2l0aHViIiwicHJvamVjdHMiOlt7Im5hbWUiOiJlbWJsZW0tcmVkIiwicHJvamVjdElkIjoicHJqX0xoZjE1RUd0WGFGMVhkdGR3NnFuSVptT1pzVFEiLCJ2MCI6ZmFsc2UsImluc3BlY3RvclVybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS9vcjEzL2VtYmxlbS1yZWQvRnd6Q3ZvUkw5b0hZVVdrcHdSMWNpeEthR1BQQiIsInByZXZpZXdVcmwiOiJlbWJsZW0tcmVkLWdpdC1naXRodWItY29udHJpYnV0aW9uLWxpbmtzLW9yMTMudmVyY2VsLmFwcCIsIm5leHRDb21taXRTdGF0dXMiOiJERVBMT1lFRCIsImxpdmVGZWVkYmFjayI6eyJyZXNvbHZlZCI6MCwidW5yZXNvbHZlZCI6MCwidG90YWwiOjAsImxpbmsiOiJlbWJsZW0tcmVkLWdpdC1naXRodWItY29udHJpYnV0aW9uLWxpbmtzLW9yMTMudmVyY2VsLmFwcCJ9LCJyb290RGlyZWN0b3J5IjoiZGVtbyJ9XSwicmVxdWVzdFJldmlld1VybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS92ZXJjZWwtYWdlbnQvcmVxdWVzdC1yZXZpZXc/b3duZXI9T1IxMyZyZXBvPWVtYmxlbS5yZWQmcHI9NiJ9\nThe latest updates on your projects. Learn more about [Vercel for GitHub](https://vercel.link/github-learn-more).\n\n| Project | Deployment | Actions | Updated (UTC) |\n| :--- | :----- | :------ | :------ |\n| [emblem-red](https://vercel.com/or13/emblem-red) | ![Ready](https://vercel.com/static/status/ready.svg) [Ready](https://vercel.com/or13/emblem-red/FwzCvoRL9oHYUWkpwR1cixKaGPPB) | [Preview](https://emblem-red-git-github-contribution-links-or13.vercel.app), [Comment](https://vercel.live/open-feedback/emblem-red-git-github-contribution-links-or13.vercel.app?via=pr-comment-feedback-link) | Jul 7, 2026 10:06pm |\n\n<a href=\"https://vercel.com/vercel-agent/request-review?owner=OR13&repo=emblem.red&pr=6\" rel=\"noreferrer\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-light.svg\"><img src=\"https://agents-vade-review.vercel.sh/request-review-light.svg\" alt=\"Request Review\"></picture></a>\n\n",
           "createdAt": "2026-07-07T22:05:39Z",
           "updatedAt": "2026-07-07T22:06:05Z"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "number": 7,
+      "id": "PR_kwDOMcQi-873dCSi",
+      "title": "no-vercel-preview-for-gh-pages",
+      "url": "https://github.com/OR13/emblem.red/pull/7",
+      "state": "MERGED",
+      "author": "OR13",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Why: the archive workflow (cron Sun/Tue/Thu 00:00 UTC) pushes to `gh-pages`, which Vercel picks up as a Preview deployment. That build fails instantly with `The specified Root Directory \"demo\" does not exist` \u2014 `gh-pages` only holds built drafts, not the Next.js app. Result: a cosmetic red X three times a week (07-19, 07-21, 07-23, 07-26, 07-28), with GitHub Actions itself entirely green.\n\nAdds `demo/vercel.json` (Vercel resolves config relative to the project's Root Directory, `demo`) turning off automatic deployments for `gh-pages` only. `main` still deploys to production; GitHub Pages is untouched.\n\n\ud83e\udd16 Generated with [Claude Code](https://claude.com/claude-code)",
+      "createdAt": "2026-07-28T13:02:59Z",
+      "updatedAt": "2026-07-28T13:04:10Z",
+      "baseRepository": "OR13/emblem.red",
+      "baseRefName": "main",
+      "baseRefOid": "bd215d8c83a9d24c06d10a805e6503a1e55ca959",
+      "headRepository": "OR13/emblem.red",
+      "headRefName": "no-vercel-preview-for-gh-pages",
+      "headRefOid": "55d71d4ee2f539f20dfbac05c102c6fe72680a56",
+      "closedAt": "2026-07-28T13:04:09Z",
+      "mergedAt": "2026-07-28T13:04:09Z",
+      "mergedBy": "OR13",
+      "mergeCommit": {
+        "oid": "7ceea3eb2a0d6d620b9537b58ea24fb2d6a9b995"
+      },
+      "comments": [
+        {
+          "author": "vercel",
+          "authorAssociation": "NONE",
+          "body": "[vc]: #HZoFc7inAmZkAvZrOnNyqxq5z+6cXWcmEWxRWM2fOmw=:eyJpc01vbm9yZXBvIjp0cnVlLCJ0eXBlIjoiZ2l0aHViIiwicHJvamVjdHMiOlt7Im5hbWUiOiJlbWJsZW0tcmVkIiwicHJvamVjdElkIjoicHJqX0xoZjE1RUd0WGFGMVhkdGR3NnFuSVptT1pzVFEiLCJ2MCI6ZmFsc2UsImluc3BlY3RvclVybCI6Imh0dHBzOi8vdmVyY2VsLmNvbS9vcjEzL2VtYmxlbS1yZWQvNkNwYzFDdThyTUd2dW84QXB0Qlk1RTVuckgxMSIsInByZXZpZXdVcmwiOiJlbWJsZW0tcmVkLWdpdC1uby12ZXJjZWwtcHJldmlldy1mb3ItZ2gtcGFnZXMtb3IxMy52ZXJjZWwuYXBwIiwibmV4dENvbW1pdFN0YXR1cyI6IkRFUExPWUVEIiwibGl2ZUZlZWRiYWNrIjp7InJlc29sdmVkIjowLCJ1bnJlc29sdmVkIjowLCJ0b3RhbCI6MCwibGluayI6ImVtYmxlbS1yZWQtZ2l0LW5vLXZlcmNlbC1wcmV2aWV3LWZvci1naC1wYWdlcy1vcjEzLnZlcmNlbC5hcHAifSwicm9vdERpcmVjdG9yeSI6ImRlbW8ifV0sInJlcXVlc3RSZXZpZXdVcmwiOiJodHRwczovL3ZlcmNlbC5jb20vdmVyY2VsLWFnZW50L3JlcXVlc3QtcmV2aWV3P293bmVyPU9SMTMmcmVwbz1lbWJsZW0ucmVkJnByPTcifQ==\nThe latest updates on your projects. Learn more about [Vercel for GitHub](https://vercel.link/github-learn-more).\n\n| Project | Deployment | Actions | Updated (UTC) |\n| :--- | :----- | :------ | :------ |\n| [emblem-red](https://vercel.com/or13/emblem-red) | ![Ready](https://vercel.com/static/status/ready.svg) [Ready](https://vercel.com/or13/emblem-red/6Cpc1Cu8rMGvuo8AptBY5E5nrH11) | [Preview](https://emblem-red-git-no-vercel-preview-for-gh-pages-or13.vercel.app), [Comment](https://vercel.live/open-feedback/emblem-red-git-no-vercel-preview-for-gh-pages-or13.vercel.app?via=pr-comment-feedback-link) | Jul 28, 2026 1:03pm |\n\n<a href=\"https://vercel.com/vercel-agent/request-review?owner=OR13&repo=emblem.red&pr=7\" rel=\"noreferrer\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://agents-vade-review.vercel.sh/request-review-light.svg\"><img src=\"https://agents-vade-review.vercel.sh/request-review-light.svg\" alt=\"Request Review\"></picture></a>\n\n",
+          "createdAt": "2026-07-28T13:03:04Z",
+          "updatedAt": "2026-07-28T13:03:16Z"
         }
       ],
       "reviews": []
